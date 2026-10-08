@@ -849,6 +849,8 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      has_expert_application: { Args: { p_user_id: string }; Returns: boolean }
+      has_services_as_client: { Args: { p_user_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_service_party: { Args: { p_service_id: string }; Returns: boolean }
       open_next_stage: { Args: { p_service_id: string }; Returns: undefined }
