@@ -54,7 +54,7 @@ export function ServicePhaseBar({
 
   return (
     <div className="-mx-1 overflow-x-auto pb-1">
-      <ol className="grid min-w-[46rem] grid-cols-8" aria-label="Avance del servicio">
+      <ol className="grid min-w-[34rem] grid-cols-8" aria-label="Avance del servicio">
         {FLOW.map((step, i) => {
           const state = states[i];
           const isExecutionStep = step === "in_progress";
@@ -88,7 +88,7 @@ export function ServicePhaseBar({
               </span>
               <span
                 className={cn(
-                  "mt-2 text-xs font-medium leading-tight sm:text-sm",
+                  "mt-2 text-xs font-medium leading-tight xl:text-sm",
                   state === "upcoming" ? "text-slate-400" : "text-slate-800",
                   state === "current" && "text-primary",
                   state === "paused" && "text-amber-700",
