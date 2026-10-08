@@ -9,7 +9,7 @@ export const buttonClasses = (variant: ButtonVariant = "primary", size: ButtonSi
     "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50",
     size === "sm" ? "h-8 px-3 text-sm" : "h-10 px-4 text-sm",
     variant === "primary" && "bg-primary text-white hover:bg-primary-hover",
-    variant === "accent" && "bg-accent text-white hover:bg-orange-600",
+    variant === "accent" && "bg-accent text-white hover:bg-accent-hover",
     variant === "secondary" &&
       "border border-border bg-white text-foreground hover:bg-slate-50",
     variant === "danger" && "border border-red-200 bg-white text-red-700 hover:bg-red-50",

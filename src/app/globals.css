@@ -4,9 +4,12 @@
   --background: #f8fafc;
   --foreground: #0f172a;
   --border: #e2e8f0;
-  --primary: #0f766e;
-  --primary-hover: #115e59;
-  --accent: #f97316;
+  /* Colores del logo: azul (principal) y naranja (acento). */
+  --primary: #0a4baf;
+  --primary-hover: #083a8c;
+  --primary-soft: #e7effc;
+  --accent: #f26a00;
+  --accent-hover: #d45a00;
 }
 
 @theme inline {
@@ -15,7 +18,9 @@
   --color-border: var(--border);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --radius-card: 12px;
