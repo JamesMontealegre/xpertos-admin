@@ -1,19 +1,14 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { formatDateTime, shortId } from "@/lib/format";
-import {
-  APPLICATION_STATUS,
-  SERVICE_STATUS,
-  SERVICE_STATUS_ORDER,
-  type ServiceStatus,
-} from "@/lib/labels";
+import { APPLICATION_STATUS } from "@/lib/labels";
+import { PHASE_FILTER_ORDER, PHASE_INFO, servicePhase } from "@/lib/service-phase";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, StatCard } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 
 type Dashboard = {
   applications_pending: number;
-  services_by_status: Partial<Record<ServiceStatus, number>>;
   payments_to_verify: number;
   experts_active: number;
   contracts_pending: number;
@@ -22,7 +17,7 @@ type Dashboard = {
 export default async function DashboardPage() {
   const { supabase } = await requireAdmin();
 
-  const [{ data: metrics, error: metricsError }, { data: applications }, { data: services }] =
+  const [{ data: metrics, error: metricsError }, { data: applications }, { data: services }, { data: allServices }] =
     await Promise.all([
       supabase.rpc("admin_dashboard"),
       supabase
@@ -32,14 +27,19 @@ export default async function DashboardPage() {
         .limit(5),
       supabase
         .from("services")
-        .select("id, title, city, status, created_at, category:service_categories(name)")
+        .select("id, title, city, status, created_at, category:service_categories(name), stages:service_stages(position, status)")
         .order("created_at", { ascending: false })
         .limit(5),
+      supabase.from("services").select("status, stages:service_stages(position, status)"),
     ]);
 
   const dashboard = (metrics ?? {}) as Partial<Dashboard>;
-  const byStatus = dashboard.services_by_status ?? {};
-  const totalServices = Object.values(byStatus).reduce((acc, n) => acc + (n ?? 0), 0);
+  const byPhase = (allServices ?? []).reduce<Record<string, number>>((acc, s) => {
+    const phase = servicePhase(s.status, s.stages);
+    acc[phase] = (acc[phase] ?? 0) + 1;
+    return acc;
+  }, {});
+  const totalServices = allServices?.length ?? 0;
 
   return (
     <>
@@ -76,17 +76,17 @@ export default async function DashboardPage() {
       </div>
 
       <Card className="mt-6">
-        <CardHeader title="Servicios por estado" description={`${totalServices} servicios en total`} />
+        <CardHeader title="Servicios por etapa" description={`${totalServices} servicios en total`} />
         <CardBody>
-          <ul className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {SERVICE_STATUS_ORDER.map((status) => (
-              <li key={status}>
+          <ul className="grid gap-3 sm:grid-cols-4 lg:grid-cols-7">
+            {PHASE_FILTER_ORDER.map((phase) => (
+              <li key={phase}>
                 <Link
-                  href={`/servicios?estado=${status}`}
+                  href={`/servicios?fase=${phase}`}
                   className="block rounded-xl border border-border px-3 py-3 hover:border-primary/40 hover:bg-slate-50"
                 >
-                  <Badge tone={SERVICE_STATUS[status].tone}>{SERVICE_STATUS[status].label}</Badge>
-                  <p className="mt-2 text-2xl font-semibold">{byStatus[status] ?? 0}</p>
+                  <Badge tone={PHASE_INFO[phase].tone}>{PHASE_INFO[phase].label}</Badge>
+                  <p className="mt-2 text-2xl font-semibold">{byPhase[phase] ?? 0}</p>
                 </Link>
               </li>
             ))}
@@ -147,7 +147,9 @@ export default async function DashboardPage() {
                       <span className="font-mono">{shortId(s.id)}</span>
                     </p>
                   </div>
-                  <Badge tone={SERVICE_STATUS[s.status].tone}>{SERVICE_STATUS[s.status].label}</Badge>
+                  <Badge tone={PHASE_INFO[servicePhase(s.status, s.stages)].tone}>
+                    {PHASE_INFO[servicePhase(s.status, s.stages)].label}
+                  </Badge>
                 </Link>
               </li>
             ))}

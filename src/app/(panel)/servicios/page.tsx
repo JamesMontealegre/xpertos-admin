@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
-import { SERVICE_STATUS, SERVICE_STATUS_ORDER, type ServiceStatus } from "@/lib/labels";
-import { Badge } from "@/components/ui/badge";
+import { PHASE_FILTER_ORDER, PHASE_INFO, isServicePhase, servicePhase } from "@/lib/service-phase";
+import { ServicePhaseBarCompact } from "@/components/service-phase-bar";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyRow, Table, TBody, Td, THead, Tr } from "@/components/ui/table";
@@ -11,28 +11,26 @@ import { StatusTabs } from "@/components/status-tabs";
 
 export const metadata: Metadata = { title: "Servicios" };
 
-const COLUMNS = ["Título", "Categoría", "Cliente", "Experto", "Ciudad", "Estado", "Etapas pagadas", "Creado"];
+const COLUMNS = ["Título", "Categoría", "Cliente", "Experto", "Ciudad", "Etapa", "Pagos", "Creado"];
 
 export default async function ServicesPage(props: PageProps<"/servicios">) {
   const searchParams = await props.searchParams;
-  const estado = typeof searchParams.estado === "string" ? searchParams.estado : "";
-  const status = SERVICE_STATUS_ORDER.includes(estado as ServiceStatus) ? (estado as ServiceStatus) : null;
+  const fase = typeof searchParams.fase === "string" ? searchParams.fase : "";
+  const phaseFilter = isServicePhase(fase) ? fase : null;
 
   const { supabase } = await requireAdmin();
 
-  let query = supabase
+  // La etapa depende del pago del anticipo, así que se calcula aquí y se filtra en memoria.
+  const { data: allServices, error } = await supabase
     .from("services")
     .select(
-      "id, title, city, status, created_at, expert_id, category:service_categories(name), client:profiles!services_client_id_fkey(full_name), stages:service_stages(status)",
+      "id, title, city, status, created_at, expert_id, category:service_categories(name), client:profiles!services_client_id_fkey(full_name), stages:service_stages(position, status)",
     )
     .order("created_at", { ascending: false })
-    .limit(200);
-  if (status) query = query.eq("status", status);
+    .limit(500);
 
-  const [{ data: services, error }, { data: counts }] = await Promise.all([
-    query,
-    supabase.from("services").select("status"),
-  ]);
+  const withPhase = (allServices ?? []).map((s) => ({ ...s, phase: servicePhase(s.status, s.stages) }));
+  const services = phaseFilter ? withPhase.filter((s) => s.phase === phaseFilter) : withPhase;
 
   const expertIds = Array.from(new Set((services ?? []).map((s) => s.expert_id).filter((v): v is string => Boolean(v))));
   const { data: experts } = expertIds.length
@@ -40,8 +38,8 @@ export default async function ServicesPage(props: PageProps<"/servicios">) {
     : { data: [] as Array<{ id: string; full_name: string }> };
   const expertName = new Map((experts ?? []).map((e) => [e.id, e.full_name]));
 
-  const countByStatus = (counts ?? []).reduce<Record<string, number>>((acc, row) => {
-    acc[row.status] = (acc[row.status] ?? 0) + 1;
+  const countByPhase = withPhase.reduce<Record<string, number>>((acc, row) => {
+    acc[row.phase] = (acc[row.phase] ?? 0) + 1;
     return acc;
   }, {});
 
@@ -52,14 +50,14 @@ export default async function ServicesPage(props: PageProps<"/servicios">) {
       <div className="mb-4">
         <StatusTabs
           basePath="/servicios"
-          param="estado"
-          current={status}
+          param="fase"
+          current={phaseFilter}
           tabs={[
-            { value: null, label: "Todos", count: counts?.length ?? 0 },
-            ...SERVICE_STATUS_ORDER.map((s) => ({
-              value: s,
-              label: SERVICE_STATUS[s].label,
-              count: countByStatus[s] ?? 0,
+            { value: null, label: "Todos", count: withPhase.length },
+            ...PHASE_FILTER_ORDER.map((p) => ({
+              value: p,
+              label: PHASE_INFO[p].label,
+              count: countByPhase[p] ?? 0,
             })),
           ]}
         />
@@ -72,7 +70,7 @@ export default async function ServicesPage(props: PageProps<"/servicios">) {
             {error && <EmptyRow colSpan={COLUMNS.length}>No fue posible cargar los servicios: {error.message}</EmptyRow>}
             {!error && (services ?? []).length === 0 && (
               <EmptyRow colSpan={COLUMNS.length}>
-                {status ? "No hay servicios en este estado." : "Aún no hay servicios."}
+                {phaseFilter ? "No hay servicios en esta etapa." : "Aún no hay servicios."}
               </EmptyRow>
             )}
             {(services ?? []).map((s) => {
@@ -89,7 +87,7 @@ export default async function ServicesPage(props: PageProps<"/servicios">) {
                   <Td>{s.expert_id ? expertName.get(s.expert_id) ?? "Experto" : <span className="text-slate-400">Sin asignar</span>}</Td>
                   <Td>{s.city ?? "—"}</Td>
                   <Td>
-                    <Badge tone={SERVICE_STATUS[s.status].tone}>{SERVICE_STATUS[s.status].label}</Badge>
+                    <ServicePhaseBarCompact phase={s.phase} />
                   </Td>
                   <Td>{s.stages.length === 0 ? <span className="text-slate-400">—</span> : `${paid} / ${s.stages.length}`}</Td>
                   <Td className="whitespace-nowrap text-slate-600">{formatDate(s.created_at)}</Td>

@@ -675,6 +675,7 @@ export type Database = {
           estimated_price: number | null
           expert_id: string | null
           id: string
+          pause_reason: string | null
           scheduled_at: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["service_status"]
@@ -697,6 +698,7 @@ export type Database = {
           estimated_price?: number | null
           expert_id?: string | null
           id?: string
+          pause_reason?: string | null
           scheduled_at?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["service_status"]
@@ -719,6 +721,7 @@ export type Database = {
           estimated_price?: number | null
           expert_id?: string | null
           id?: string
+          pause_reason?: string | null
           scheduled_at?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["service_status"]
@@ -812,6 +815,7 @@ export type Database = {
           estimated_price: number | null
           expert_id: string | null
           id: string
+          pause_reason: string | null
           scheduled_at: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["service_status"]
@@ -939,6 +943,7 @@ export type Database = {
         | "in_review"
         | "assigned"
         | "in_progress"
+        | "paused"
         | "completed"
         | "cancelled"
       stage_status:
@@ -1105,6 +1110,7 @@ export const Constants = {
         "in_review",
         "assigned",
         "in_progress",
+        "paused",
         "completed",
         "cancelled",
       ],

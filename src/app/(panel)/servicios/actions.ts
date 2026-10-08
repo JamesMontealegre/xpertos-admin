@@ -29,6 +29,42 @@ export async function changeServiceStatus(_prev: ActionResult, formData: FormDat
   return { ok: true, message: `Servicio ahora en estado "${SERVICE_STATUS[status].label}".` };
 }
 
+/** Pausa un servicio en ejecución; el motivo es obligatorio y queda en el historial. */
+export async function pauseService(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const serviceId = fieldString(formData, "service_id");
+  const reason = fieldString(formData, "reason");
+  if (!serviceId) return { ok: false, message: "Servicio no válido." };
+  if (reason.length < 5) return { ok: false, message: "Escribe el motivo de la pausa." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("services")
+    .update({ status: "paused", pause_reason: reason })
+    .eq("id", serviceId)
+    .eq("status", "in_progress");
+  if (error) return fail(error);
+
+  revalidateService(serviceId);
+  return { ok: true, message: "Servicio en pausa." };
+}
+
+/** Reanuda un servicio pausado: vuelve a En ejecución (el trigger limpia el motivo). */
+export async function resumeService(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const serviceId = fieldString(formData, "service_id");
+  if (!serviceId) return { ok: false, message: "Servicio no válido." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("services")
+    .update({ status: "in_progress" })
+    .eq("id", serviceId)
+    .eq("status", "paused");
+  if (error) return fail(error);
+
+  revalidateService(serviceId);
+  return { ok: true, message: "Servicio reanudado." };
+}
+
 export async function cancelService(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const serviceId = fieldString(formData, "service_id");
   const reason = fieldString(formData, "reason");

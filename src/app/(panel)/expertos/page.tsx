@@ -20,7 +20,7 @@ export default async function ExpertsPage() {
       .select("user_id, category_ids, rating_avg, rating_count, is_available, approved_at, profile:profiles!expert_profiles_user_id_fkey(full_name, city, email)")
       .order("approved_at", { ascending: false }),
     supabase.from("service_categories").select("id, name"),
-    supabase.from("services").select("expert_id").in("status", ["assigned", "in_progress"]).not("expert_id", "is", null),
+    supabase.from("services").select("expert_id").in("status", ["assigned", "in_progress", "paused"]).not("expert_id", "is", null),
   ]);
 
   const categoryName = new Map((categories ?? []).map((c) => [c.id, c.name]));

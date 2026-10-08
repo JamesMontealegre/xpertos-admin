@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { formatCOP, formatDate, formatDateTime, formatTime } from "@/lib/format";
-import { SERVICE_STATUS, WEEKDAYS } from "@/lib/labels";
+import { WEEKDAYS } from "@/lib/labels";
+import { PHASE_INFO, servicePhase } from "@/lib/service-phase";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, DescriptionList } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -27,14 +28,14 @@ export default async function ExpertDetailPage(props: PageProps<"/expertos/[id]"
     supabase.from("expert_availability").select("*").eq("expert_id", id).order("weekday").order("start_time"),
     supabase
       .from("services")
-      .select("id, title, status, city, estimated_price, scheduled_at, created_at, category:service_categories(name), client:profiles!services_client_id_fkey(full_name)")
+      .select("id, title, status, city, estimated_price, scheduled_at, created_at, category:service_categories(name), client:profiles!services_client_id_fkey(full_name), stages:service_stages(position, status)")
       .eq("expert_id", id)
       .order("created_at", { ascending: false }),
     supabase.from("expert_applications").select("id, status").eq("user_id", id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
   const categoryName = new Map((categories ?? []).map((c) => [c.id, c.name]));
-  const active = (services ?? []).filter((s) => s.status === "assigned" || s.status === "in_progress");
+  const active = (services ?? []).filter((s) => s.status === "assigned" || s.status === "in_progress" || s.status === "paused");
 
   return (
     <>
@@ -108,7 +109,7 @@ export default async function ExpertDetailPage(props: PageProps<"/expertos/[id]"
                     <Td>{s.category?.name ?? "—"}</Td>
                     <Td>{s.client?.full_name || "—"}</Td>
                     <Td>
-                      <Badge tone={SERVICE_STATUS[s.status].tone}>{SERVICE_STATUS[s.status].label}</Badge>
+                      <Badge tone={PHASE_INFO[servicePhase(s.status, s.stages)].tone}>{PHASE_INFO[servicePhase(s.status, s.stages)].label}</Badge>
                     </Td>
                     <Td className="whitespace-nowrap">{formatCOP(s.estimated_price)}</Td>
                     <Td className="whitespace-nowrap text-slate-600">{s.scheduled_at ? formatDateTime(s.scheduled_at) : formatDate(null)}</Td>

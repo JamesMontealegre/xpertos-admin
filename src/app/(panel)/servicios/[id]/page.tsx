@@ -10,9 +10,10 @@ import {
   PAYMENT_METHOD,
   PAYMENT_STATUS,
   ROLE_LABEL,
-  SERVICE_STATUS,
   STAGE_STATUS,
 } from "@/lib/labels";
+import { PHASE_INFO, servicePhase } from "@/lib/service-phase";
+import { ServicePhaseBar } from "@/components/service-phase-bar";
 import { signedUrl } from "@/lib/storage";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +26,15 @@ import { FilePreview } from "@/components/ui/file-preview";
 import { EmptyRow, Table, TBody, Td, THead, Tr } from "@/components/ui/table";
 import { AssignForm, type ExpertOption } from "./assign-form";
 import { Timeline, type TimelineEvent } from "./timeline";
-import { cancelService, changeServiceStatus, generateContract, openNextStage, reviewPayment } from "../actions";
+import {
+  cancelService,
+  changeServiceStatus,
+  generateContract,
+  openNextStage,
+  pauseService,
+  resumeService,
+  reviewPayment,
+} from "../actions";
 
 export const metadata: Metadata = { title: "Detalle de servicio" };
 
@@ -107,8 +116,12 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     availability: [...c.availability].sort((a, b) => a.weekday - b.weekday || a.start_time.localeCompare(b.start_time)),
   }));
 
-  const status = SERVICE_STATUS[service.status];
   const stageList = stages ?? [];
+  const phase = servicePhase(service.status, stageList);
+  const phaseInfo = PHASE_INFO[phase];
+  // Para un servicio cancelado, la etapa en la que estaba al cancelarse (según el historial).
+  const cancelEvent = [...(events ?? [])].reverse().find((e) => e.to_status === "cancelled");
+  const cancelledAt = cancelEvent?.from_status ? servicePhase(cancelEvent.from_status, stageList) : null;
   const firstStage = stageList[0];
   const contractSigned = contract?.status === "signed";
   const firstStagePaid = firstStage?.status === "paid";
@@ -150,7 +163,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
         backHref="/servicios"
         backLabel="Servicios"
         title={service.title}
-        meta={<Badge tone={status.tone}>{status.label}</Badge>}
+        meta={<Badge tone={phaseInfo.tone}>{phaseInfo.label}</Badge>}
         description={
           <>
             <span className="font-mono">{shortId(service.id)}</span> · {service.category?.name ?? "Sin categoría"} · creado el{" "}
@@ -166,7 +179,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
                 variant="primary"
                 size="md"
               >
-                Pasar a revisión
+                Iniciar cotización
               </ActionButton>
             )}
             {service.status === "assigned" && (
@@ -182,13 +195,41 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
               </ActionButton>
             )}
             {service.status === "in_progress" && (
-              <ActionButton
-                action={changeServiceStatus}
-                fields={{ service_id: service.id, status: "completed" }}
-                variant="primary"
-                size="md"
-              >
-                Marcar completado
+              <>
+                <ActionDialog
+                  triggerLabel="Pausar"
+                  triggerVariant="secondary"
+                  triggerSize="md"
+                  title="Pausar servicio"
+                  description="El servicio quedará En pausa hasta que lo reanudes. El cliente y el experto lo verán."
+                  action={pauseService}
+                  fields={{ service_id: service.id }}
+                  submitLabel="Pausar servicio"
+                  pendingLabel="Pausando…"
+                >
+                  <Field label="Motivo" htmlFor="pause-reason">
+                    <Textarea
+                      id="pause-reason"
+                      name="reason"
+                      required
+                      minLength={5}
+                      placeholder="Ej.: esperando que lleguen los materiales."
+                    />
+                  </Field>
+                </ActionDialog>
+                <ActionButton
+                  action={changeServiceStatus}
+                  fields={{ service_id: service.id, status: "completed" }}
+                  variant="primary"
+                  size="md"
+                >
+                  Marcar finalizado
+                </ActionButton>
+              </>
+            )}
+            {service.status === "paused" && (
+              <ActionButton action={resumeService} fields={{ service_id: service.id }} variant="primary" size="md">
+                Reanudar
               </ActionButton>
             )}
             {cancelDialog}
@@ -196,6 +237,21 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
         }
       />
 
+      <Card className="mb-6">
+        <CardBody>
+          <ServicePhaseBar
+            phase={phase}
+            cancelledAt={cancelledAt}
+            note={phase === "paused" ? service.pause_reason : phase === "done" ? `Finalizado el ${formatDate(service.completed_at)}` : null}
+          />
+        </CardBody>
+      </Card>
+
+      {service.status === "paused" && (
+        <Alert tone="warning" className="mb-6">
+          Servicio en pausa{service.pause_reason ? `: ${service.pause_reason}` : "."}
+        </Alert>
+      )}
       {service.status === "assigned" && !canStart && (
         <Alert tone="warning" className="mb-6">
           Para iniciar el servicio {startBlockers.join(" y ")}.

@@ -12,23 +12,19 @@ export type PaymentMethod = Enums["payment_method"];
 
 export type Tone = "slate" | "amber" | "blue" | "teal" | "green" | "red" | "orange";
 
+/**
+ * Estado técnico del servicio en la base (se ve en el historial). Para el operador, el avance se
+ * muestra con las etapas de `service-phase.ts` (Cotización → … → Finalizado).
+ */
 export const SERVICE_STATUS: Record<ServiceStatus, { label: string; tone: Tone }> = {
-  requested: { label: "Solicitado", tone: "slate" },
-  in_review: { label: "En revisión", tone: "amber" },
-  assigned: { label: "Asignado", tone: "blue" },
-  in_progress: { label: "En progreso", tone: "teal" },
-  completed: { label: "Completado", tone: "green" },
+  requested: { label: "Solicitud recibida", tone: "slate" },
+  in_review: { label: "En cotización", tone: "slate" },
+  assigned: { label: "Experto asignado", tone: "blue" },
+  in_progress: { label: "En ejecución", tone: "teal" },
+  paused: { label: "En pausa", tone: "amber" },
+  completed: { label: "Finalizado", tone: "green" },
   cancelled: { label: "Cancelado", tone: "red" },
 };
-
-export const SERVICE_STATUS_ORDER: ServiceStatus[] = [
-  "requested",
-  "in_review",
-  "assigned",
-  "in_progress",
-  "completed",
-  "cancelled",
-];
 
 export const STAGE_STATUS: Record<StageStatus, { label: string; tone: Tone }> = {
   pending: { label: "Pendiente", tone: "slate" },

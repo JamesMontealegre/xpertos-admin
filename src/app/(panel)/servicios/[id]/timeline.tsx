@@ -15,10 +15,11 @@ export type TimelineEvent = {
 function describe(event: TimelineEvent) {
   const payload = (event.payload ?? {}) as Record<string, unknown>;
   switch (event.type) {
-    case "status_change":
-      return event.from_status && event.to_status
-        ? `${SERVICE_STATUS[event.from_status].label} → ${SERVICE_STATUS[event.to_status].label}`
-        : null;
+    case "status_change": {
+      if (!event.from_status || !event.to_status) return null;
+      const transition = `${SERVICE_STATUS[event.from_status].label} → ${SERVICE_STATUS[event.to_status].label}`;
+      return typeof payload.reason === "string" && payload.reason ? `${transition} · Motivo: ${payload.reason}` : transition;
+    }
     case "assigned":
       return typeof payload.stages === "number" ? `${payload.stages} etapa(s) de pago definidas` : null;
     case "payment_submitted":
