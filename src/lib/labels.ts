@@ -76,19 +76,27 @@ export const ROLE_LABEL: Record<UserRole, string> = {
 export const DOCUMENT_KIND: Record<DocumentKind, string> = {
   id_front: "Cédula (frente)",
   id_back: "Cédula (reverso)",
+  social_security: "Planilla de seguridad social y ARL",
+  photo: "Foto 3x4 fondo blanco",
+  recommendation_letter: "Carta de recomendación del último trabajo",
   rut: "RUT",
+  background_check: "Certificado de antecedentes",
   certificate: "Certificado o diploma",
   portfolio: "Portafolio de trabajos",
-  background_check: "Certificado de antecedentes",
-  social_security: "Planilla de seguridad social",
   other: "Otro",
 };
 
 /**
- * Documentos obligatorios de una postulación. Coinciden con los tipos de una sola carga de la app
- * de usuarios; certificados, portafolio y "otro" son opcionales y repetibles.
+ * Documentos requeridos de una postulación (los mismos que la app de usuarios marca como
+ * "Requerido"). RUT, antecedentes, certificados, portafolio y "otro" son opcionales.
  */
-export const REQUIRED_DOCUMENTS: DocumentKind[] = ["id_front", "id_back", "rut", "background_check", "social_security"];
+export const REQUIRED_DOCUMENTS: DocumentKind[] = [
+  "id_front",
+  "id_back",
+  "social_security",
+  "photo",
+  "recommendation_letter",
+];
 
 export function missingRequiredDocuments(uploaded: DocumentKind[]): DocumentKind[] {
   return REQUIRED_DOCUMENTS.filter((kind) => !uploaded.includes(kind));

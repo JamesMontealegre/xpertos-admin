@@ -128,7 +128,7 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
               {missingDocuments.length > 0 ? (
                 <Alert tone="warning">
                   <p className="font-medium">
-                    Faltan por cargar {missingDocuments.length} de {REQUIRED_DOCUMENTS.length} documentos obligatorios:
+                    Faltan por cargar {missingDocuments.length} de {REQUIRED_DOCUMENTS.length} documentos requeridos:
                   </p>
                   <ul className="mt-1 list-inside list-disc">
                     {missingDocuments.map((kind) => (
@@ -137,7 +137,7 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
                   </ul>
                 </Alert>
               ) : (
-                <Alert tone="success">Los {REQUIRED_DOCUMENTS.length} documentos obligatorios están cargados.</Alert>
+                <Alert tone="success">Los {REQUIRED_DOCUMENTS.length} documentos requeridos están cargados.</Alert>
               )}
               {docsWithUrls.length === 0 ? (
                 <p className="text-sm text-slate-500">

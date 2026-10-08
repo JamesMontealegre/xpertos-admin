@@ -127,7 +127,7 @@ export default async function ApplicationsPage(props: PageProps<"/solicitudes">)
                   <Td className="whitespace-nowrap">{a.experience_years != null ? `${a.experience_years} años` : "—"}</Td>
                   <Td>
                     <Badge tone={missing.length === 0 ? "green" : uploaded === 0 ? "slate" : "amber"}>
-                      {uploaded}/{REQUIRED_DOCUMENTS.length} obligatorios
+                      {uploaded}/{REQUIRED_DOCUMENTS.length} requeridos
                     </Badge>
                     {missing.length > 0 && (
                       <p className="mt-1 max-w-[14rem] text-xs text-slate-500">

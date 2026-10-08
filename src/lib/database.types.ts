@@ -930,6 +930,8 @@ export type Database = {
         | "background_check"
         | "social_security"
         | "other"
+        | "photo"
+        | "recommendation_letter"
       payment_method: "transfer" | "cash" | "mercado_pago" | "tucompra"
       payment_status: "submitted" | "verified" | "rejected"
       service_status:
@@ -1093,6 +1095,8 @@ export const Constants = {
         "background_check",
         "social_security",
         "other",
+        "photo",
+        "recommendation_letter",
       ],
       payment_method: ["transfer", "cash", "mercado_pago", "tucompra"],
       payment_status: ["submitted", "verified", "rejected"],

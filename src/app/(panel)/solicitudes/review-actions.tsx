@@ -73,7 +73,7 @@ export function ReviewActions({
       >
         {missingDocuments.length > 0 && (
           <Alert tone="warning">
-            Faltan documentos obligatorios: {missingDocuments.map((kind) => DOCUMENT_KIND[kind]).join(", ")}. Puedes
+            Faltan documentos requeridos: {missingDocuments.map((kind) => DOCUMENT_KIND[kind]).join(", ")}. Puedes
             aprobar igualmente, pero deja constancia en la justificación.
           </Alert>
         )}
