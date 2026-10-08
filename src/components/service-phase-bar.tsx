@@ -36,7 +36,7 @@ const CrossIcon = () => (
 
 /**
  * Barra con los 8 pasos del servicio: Solicitado → Asignado → En cotización → Pendiente de pago →
- * Programado → En ejecución / En pausa → En observación → Finalizado. Bajo el paso actual se muestra
+ * Programado → En ejecución (o En pausa, según decida el admin) → En observación → Finalizado. Bajo el paso actual se muestra
  * una ayuda corta (`hint`). Un servicio cancelado lleva una X roja en el paso donde se canceló.
  */
 export function ServicePhaseBar({
@@ -106,9 +106,6 @@ export function ServicePhaseBar({
                 )}
               >
                 {label}
-                {isExecutionStep && state === "upcoming" && (
-                  <span className="block text-[11px] font-normal text-slate-400">o En pausa</span>
-                )}
               </span>
               {note && (
                 <span
