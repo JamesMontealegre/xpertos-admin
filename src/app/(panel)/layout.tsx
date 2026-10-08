@@ -13,7 +13,7 @@ export default async function PanelLayout({ children }: LayoutProps<"/">) {
       <aside className="border-b border-border bg-white lg:w-60 lg:shrink-0 lg:border-r lg:border-b-0">
         <div className="flex items-center gap-4 px-4 py-4 lg:flex-col lg:items-stretch lg:gap-6 lg:px-4 lg:py-6">
           <Link href="/" className="block shrink-0" aria-label="Xpertos, panel de operación">
-            <Logo variant="horizontal" height={40} priority className="h-9 w-auto lg:h-10" />
+            <Logo variant="wordmark" height={34} priority className="h-8 w-auto lg:h-[34px]" />
             <span className="mt-1.5 hidden text-xs font-medium tracking-wide text-slate-500 uppercase lg:block">
               Panel de operación
             </span>

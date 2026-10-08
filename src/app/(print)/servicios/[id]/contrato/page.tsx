@@ -68,7 +68,7 @@ export default async function ContractPrintPage(props: PageProps<"/servicios/[id
 
       <main className="contract-sheet mx-auto my-6 max-w-[52rem] bg-white px-6 py-8 shadow-sm ring-1 ring-border sm:px-14 sm:py-12 print:m-0 print:max-w-none print:p-0 print:shadow-none print:ring-0">
         <header className="mb-8 flex items-start justify-between gap-4 border-b-2 border-primary pb-4">
-          <Logo variant="horizontal" height={48} priority className="h-12 w-auto print:[print-color-adjust:exact]" />
+          <Logo variant="wordmark" height={40} priority className="h-10 w-auto print:[print-color-adjust:exact]" />
           <div className="text-right text-xs text-slate-500">
             <p>
               Servicio <span className="font-mono">{shortId(service.id)}</span>
