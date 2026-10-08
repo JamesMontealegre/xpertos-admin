@@ -195,41 +195,43 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-slate-700">Decisión</p>
                     <ReviewActions application={application} missingDocuments={missingDocuments} size="md" layout="stack" />
-                    {!application.user_id && (
+                    {!application.user_id && application.status !== "rejected" && (
                       <p className="text-xs text-slate-500">
                         No es posible aprobar: el aspirante aún no se registra en la app. Al registrarse con el correo{" "}
                         <span className="font-medium">{application.email}</span>, la postulación se enlazará automáticamente.
                       </p>
                     )}
                   </div>
-                  <ActionForm action={reviewApplication} className="space-y-4 border-t border-border pt-4">
-                    <input type="hidden" name="application_id" value={application.id} />
-                    <Field
-                      label="Seguimiento"
-                      htmlFor="notes"
-                      hint="Para pedir información, escribe qué le falta al aspirante; lo verá en la app."
-                    >
-                      <Textarea
-                        id="notes"
-                        name="notes"
-                        defaultValue={
-                          missingDocuments.length > 0 && application.status !== "needs_info"
-                            ? `Por favor carga: ${missingDocuments.map((kind) => DOCUMENT_KIND[kind]).join(", ")}.`
-                            : ""
-                        }
-                        placeholder="Ej.: falta el RUT actualizado y el certificado de antecedentes."
-                      />
-                    </Field>
+                  {application.status !== "rejected" && (
+                    <ActionForm action={reviewApplication} className="space-y-4 border-t border-border pt-4">
+                      <input type="hidden" name="application_id" value={application.id} />
+                      <Field
+                        label="Seguimiento"
+                        htmlFor="notes"
+                        hint="Para pedir información, escribe qué le falta al aspirante; lo verá en la app."
+                      >
+                        <Textarea
+                          id="notes"
+                          name="notes"
+                          defaultValue={
+                            missingDocuments.length > 0 && application.status !== "needs_info"
+                              ? `Por favor carga: ${missingDocuments.map((kind) => DOCUMENT_KIND[kind]).join(", ")}.`
+                              : ""
+                          }
+                          placeholder="Ej.: falta el RUT actualizado y el certificado de antecedentes."
+                        />
+                      </Field>
 
-                    <div className="grid gap-2">
-                      <SubmitButton name="status" value="in_review" variant="secondary" disabled={application.status === "in_review"}>
-                        Marcar en revisión
-                      </SubmitButton>
-                      <SubmitButton name="status" value="needs_info" variant="secondary">
-                        Pedir más información
-                      </SubmitButton>
-                    </div>
-                  </ActionForm>
+                      <div className="grid gap-2">
+                        <SubmitButton name="status" value="in_review" variant="secondary" disabled={application.status === "in_review"}>
+                          Marcar en revisión
+                        </SubmitButton>
+                        <SubmitButton name="status" value="needs_info" variant="secondary">
+                          Pedir más información
+                        </SubmitButton>
+                      </div>
+                    </ActionForm>
+                  )}
                 </div>
               )}
             </CardBody>

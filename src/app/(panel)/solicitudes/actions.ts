@@ -40,6 +40,36 @@ export async function reviewApplication(_prev: ActionResult, formData: FormData)
   return { ok: true, message: `Postulación marcada como "${APPLICATION_STATUS[status].label}".` };
 }
 
+/** Reabre una postulación rechazada: vuelve a "En revisión" y reemplaza la justificación del rechazo. */
+export async function reopenApplication(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const applicationId = fieldString(formData, "application_id");
+  const notes = fieldString(formData, "notes") || "Postulación reabierta para una nueva revisión.";
+  if (!applicationId) return { ok: false, message: "Postulación no válida." };
+
+  const supabase = await createClient();
+  const { data: current, error: readError } = await supabase
+    .from("expert_applications")
+    .select("status")
+    .eq("id", applicationId)
+    .maybeSingle();
+  if (readError) return fail(readError);
+  if (current?.status !== "rejected") {
+    return { ok: false, message: "Solo se pueden abrir postulaciones rechazadas." };
+  }
+
+  const { error } = await supabase.rpc("review_application", {
+    p_application_id: applicationId,
+    p_status: "in_review",
+    p_notes: notes,
+  });
+  if (error) return fail(error);
+
+  revalidatePath("/solicitudes");
+  revalidatePath(`/solicitudes/${applicationId}`);
+  revalidatePath("/");
+  return { ok: true, message: "Postulación abierta de nuevo: quedó en revisión." };
+}
+
 export async function saveApplicationNotes(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const applicationId = fieldString(formData, "application_id");
   const notes = fieldString(formData, "notes");
