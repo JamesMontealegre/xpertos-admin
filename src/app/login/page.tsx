@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Alert } from "@/components/ui/alert";
 import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { Field, Input } from "@/components/ui/input";
+import { Logo } from "@/components/logo";
 import { login } from "./actions";
 
 export const metadata: Metadata = { title: "Iniciar sesión" };
@@ -19,10 +20,8 @@ export default async function LoginPage(props: PageProps<"/login">) {
     <main className="flex min-h-screen items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-lg font-bold text-white">
-            X
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Xpertos · Operación</h1>
+          <Logo variant="full" height={170} priority className="mx-auto mb-5 h-40 w-auto" />
+          <h1 className="text-xl font-semibold tracking-tight">Panel de operación</h1>
           <p className="mt-1 text-sm text-slate-500">Inicia sesión con tu cuenta de operador.</p>
         </div>
 

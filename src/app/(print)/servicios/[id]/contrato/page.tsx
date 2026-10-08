@@ -8,6 +8,7 @@ import { formatDateTime, shortId } from "@/lib/format";
 import { CONTRACT_STATUS, ROLE_LABEL } from "@/lib/labels";
 import { STARTED_STATUSES } from "@/lib/service-phase";
 import { PrintButton } from "./print-button";
+import { Logo } from "@/components/logo";
 
 export async function generateMetadata(props: PageProps<"/servicios/[id]/contrato">): Promise<Metadata> {
   const { id } = await props.params;
@@ -67,12 +68,7 @@ export default async function ContractPrintPage(props: PageProps<"/servicios/[id
 
       <main className="contract-sheet mx-auto my-6 max-w-[52rem] bg-white px-6 py-8 shadow-sm ring-1 ring-border sm:px-14 sm:py-12 print:m-0 print:max-w-none print:p-0 print:shadow-none print:ring-0">
         <header className="mb-8 flex items-start justify-between gap-4 border-b-2 border-primary pb-4">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-base font-bold text-white print:[print-color-adjust:exact]">
-              X
-            </span>
-            <span className="text-xl font-semibold tracking-tight text-foreground">Xpertos</span>
-          </div>
+          <Logo variant="horizontal" height={48} priority className="h-12 w-auto print:[print-color-adjust:exact]" />
           <div className="text-right text-xs text-slate-500">
             <p>
               Servicio <span className="font-mono">{shortId(service.id)}</span>

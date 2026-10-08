@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { logout } from "@/app/login/actions";
 import { buttonClasses } from "@/components/ui/button";
+import { Logo } from "@/components/logo";
 
 export default async function PanelLayout({ children }: LayoutProps<"/">) {
   const { profile } = await requireAdmin();
@@ -11,11 +12,10 @@ export default async function PanelLayout({ children }: LayoutProps<"/">) {
     <div className="flex min-h-screen flex-col lg:flex-row">
       <aside className="border-b border-border bg-white lg:w-60 lg:shrink-0 lg:border-r lg:border-b-0">
         <div className="flex items-center gap-4 px-4 py-4 lg:flex-col lg:items-stretch lg:gap-6 lg:px-4 lg:py-6">
-          <Link href="/" className="flex items-center gap-2.5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-sm font-bold text-white">X</span>
-            <span className="leading-tight">
-              <span className="block text-base font-semibold">Xpertos</span>
-              <span className="block text-xs text-slate-500">Panel de operación</span>
+          <Link href="/" className="block shrink-0" aria-label="Xpertos, panel de operación">
+            <Logo variant="horizontal" height={40} priority className="h-9 w-auto lg:h-10" />
+            <span className="mt-1.5 hidden text-xs font-medium tracking-wide text-slate-500 uppercase lg:block">
+              Panel de operación
             </span>
           </Link>
           <SidebarNav />
