@@ -1,19 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
+  /* Tema Xpertos: "surface" = fondo general, rampa "brand" alrededor del azul del logo
+     (#0a4baf = brand-600) y "accent" = naranja del logo. */
+  --background: #ebeff2;
   --foreground: #0f172a;
-  --border: #e2e8f0;
-  /* Colores del logo: azul (principal) y naranja (acento). */
+  --border: #dbe1e7;
   --primary: #0a4baf;
-  --primary-hover: #083a8c;
-  --primary-soft: #e7effc;
+  --primary-hover: #083c8f;
+  --primary-soft: #eef4fd;
   --accent: #f26a00;
   --accent-hover: #d45a00;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--background);
   --color-foreground: var(--foreground);
   --color-border: var(--border);
   --color-primary: var(--primary);
@@ -21,7 +23,18 @@
   --color-primary-soft: var(--primary-soft);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
-  --font-sans: var(--font-geist-sans);
+  --color-brand-50: #eef4fd;
+  --color-brand-100: #d9e6fb;
+  --color-brand-200: #b6cff7;
+  --color-brand-300: #86aff0;
+  --color-brand-400: #4f87e6;
+  --color-brand-500: #2766d6;
+  --color-brand-600: #0a4baf;
+  --color-brand-700: #083c8f;
+  --color-brand-800: #0a3474;
+  --color-brand-900: #0c2d60;
+  --color-brand-950: #081c3d;
+  --font-sans: var(--font-mulish);
   --font-mono: var(--font-geist-mono);
   --radius-card: 12px;
 }
