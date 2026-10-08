@@ -18,7 +18,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyRow, Table, TBody, Td, THead, Tr } from "@/components/ui/table";
 import { StatusTabs } from "@/components/status-tabs";
 import { buttonClasses, LinkButton } from "@/components/ui/button";
-import { ReviewActions } from "./review-actions";
 
 export const metadata: Metadata = { title: "Solicitudes" };
 
@@ -141,12 +140,9 @@ export default async function ApplicationsPage(props: PageProps<"/solicitudes">)
                   </Td>
                   <Td className="whitespace-nowrap text-slate-600">{formatDate(a.created_at)}</Td>
                   <Td>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <LinkButton href={`/solicitudes/${a.id}`} size="sm">
-                        Ver detalle
-                      </LinkButton>
-                      <ReviewActions application={a} missingDocuments={missing} />
-                    </div>
+                    <LinkButton href={`/solicitudes/${a.id}`} size="sm" className="whitespace-nowrap">
+                      Ver detalle
+                    </LinkButton>
                   </Td>
                 </Tr>
               );
