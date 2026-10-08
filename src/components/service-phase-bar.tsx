@@ -53,7 +53,7 @@ export function ServicePhaseBar({
   const states = stepStates(status, cancelledFrom);
 
   return (
-    <div className="-mx-1 overflow-x-auto pb-1">
+    <div className="-mx-1 overflow-x-auto pt-4 pb-1">
       <ol className="grid min-w-[34rem] grid-cols-8" aria-label="Avance del servicio">
         {FLOW.map((step, i) => {
           const state = states[i];
