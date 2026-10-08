@@ -1,5 +1,15 @@
 import { formatCOP, formatDateTime } from "@/lib/format";
-import { eventLabel, ROLE_LABEL, SERVICE_STATUS, type ServiceStatus, type UserRole } from "@/lib/labels";
+import {
+  eventLabel,
+  PAYOUT_FREQUENCY,
+  PRICING_MODE,
+  ROLE_LABEL,
+  SERVICE_STATUS,
+  type PayoutFrequency,
+  type PricingMode,
+  type ServiceStatus,
+  type UserRole,
+} from "@/lib/labels";
 import type { Json } from "@/lib/database.types";
 
 export type TimelineEvent = {
@@ -12,26 +22,53 @@ export type TimelineEvent = {
   actor: { full_name: string; role: UserRole } | null;
 };
 
+function text(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function amount(value: unknown) {
+  return typeof value === "number" || (typeof value === "string" && value !== "") ? formatCOP(value as number) : null;
+}
+
 function describe(event: TimelineEvent) {
   const payload = (event.payload ?? {}) as Record<string, unknown>;
   switch (event.type) {
     case "status_change": {
       if (!event.from_status || !event.to_status) return null;
       const transition = `${SERVICE_STATUS[event.from_status].label} → ${SERVICE_STATUS[event.to_status].label}`;
-      return typeof payload.reason === "string" && payload.reason ? `${transition} · Motivo: ${payload.reason}` : transition;
+      const reason = text(payload.reason);
+      return reason ? `${transition} · Motivo: ${reason}` : transition;
     }
     case "assigned":
       return typeof payload.stages === "number" ? `${payload.stages} etapa(s) de pago definidas` : null;
     case "payment_submitted":
-      return typeof payload.amount === "number" || typeof payload.amount === "string"
-        ? `Monto ${formatCOP(payload.amount as number)}`
-        : null;
+      return amount(payload.amount) ? `Monto ${amount(payload.amount)}` : null;
     case "contract_created":
       return typeof payload.version === "number" ? `Versión ${payload.version}` : null;
     case "contract_signed":
       return typeof payload.signer_role === "string" ? `Firmó: ${ROLE_LABEL[payload.signer_role as UserRole] ?? payload.signer_role}` : null;
     case "review_created":
       return typeof payload.rating === "number" ? `Calificación ${payload.rating} / 5` : null;
+    case "quote_submitted": {
+      const mode = PRICING_MODE[payload.pricing_mode as PricingMode]?.short;
+      const labor = amount(payload.labor_total);
+      return [labor && `Mano de obra ${labor}`, mode].filter(Boolean).join(" · ") || null;
+    }
+    case "quote_approved": {
+      const total = amount(payload.total);
+      const materials = Number(payload.materials_total) > 0 ? amount(payload.materials_total) : null;
+      return total
+        ? `Total ${total}${materials ? ` (mano de obra ${amount(payload.labor_total)} + materiales ${materials})` : ""}`
+        : null;
+    }
+    case "quote_returned":
+      return text(payload.notes) ? `Notas: ${text(payload.notes)}` : null;
+    case "payout_frequency_set": {
+      const label = PAYOUT_FREQUENCY[payload.frequency as PayoutFrequency];
+      return label ? `Periodicidad: ${label}` : null;
+    }
+    case "work_closed":
+      return text(payload.notes) ? `Notas de cierre: ${text(payload.notes)}` : null;
     default:
       return null;
   }
@@ -46,6 +83,11 @@ const DOT: Record<string, string> = {
   contract_created: "bg-primary",
   contract_signed: "bg-primary",
   review_created: "bg-accent",
+  quote_submitted: "bg-blue-500",
+  quote_approved: "bg-emerald-500",
+  quote_returned: "bg-orange-500",
+  payout_frequency_set: "bg-teal-500",
+  work_closed: "bg-primary",
 };
 
 export function Timeline({ events }: { events: TimelineEvent[] }) {

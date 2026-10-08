@@ -1,48 +1,84 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { requireAdmin } from "@/lib/auth";
-import { formatCOP, formatDate, formatDateTime, formatTime, shortId } from "@/lib/format";
+import { businessDaysInRange } from "@/lib/business-days";
 import {
-  CONTRACT_STATUS,
-  PAYMENT_METHOD,
-  PAYMENT_STATUS,
+  businessDaysLabel,
+  dateCO,
+  formatCOP,
+  formatDate,
+  formatDateTime,
+  formatDayMonth,
+  formatTime,
+  shortId,
+  todayCO,
+} from "@/lib/format";
+import {
+  ACTIVE_SERVICE_STATUSES,
+  PAYOUT_FREQUENCY,
   ROLE_LABEL,
-  STAGE_STATUS,
+  SERVICE_STATUS,
+  payoutMethodLabel,
+  type ServiceStatus,
 } from "@/lib/labels";
-import { PHASE_INFO, servicePhase } from "@/lib/service-phase";
+import { STARTED_STATUSES, WORK_STATUSES } from "@/lib/service-phase";
+import { signedUrlMap } from "@/lib/storage";
 import { ServicePhaseBar } from "@/components/service-phase-bar";
-import { signedUrl } from "@/lib/storage";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { ActionButton } from "@/components/ui/action-form";
 import { Card, CardBody, CardHeader, DescriptionList } from "@/components/ui/card";
+import { ActionDialog } from "@/components/ui/dialog";
 import { Field, Textarea } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
-import { ActionButton } from "@/components/ui/action-form";
-import { ActionDialog } from "@/components/ui/dialog";
-import { FilePreview } from "@/components/ui/file-preview";
-import { EmptyRow, Table, TBody, Td, THead, Tr } from "@/components/ui/table";
+import { PhotoGrid } from "@/components/ui/photo-grid";
 import { AssignForm, type ExpertOption } from "./assign-form";
+import { ContractCard, type ContractWithSignatures } from "./contract-card";
+import { MoveControls } from "./move-controls";
+import { PaymentsCard } from "./payments-card";
+import { PayoutsCard } from "./payouts-card";
+import { QuoteCard, expertNetEstimate, type QuoteWithLines } from "./quote-card";
+import { ScheduleCard } from "./schedule-card";
 import { Timeline, type TimelineEvent } from "./timeline";
-import {
-  cancelService,
-  changeServiceStatus,
-  generateContract,
-  openNextStage,
-  pauseService,
-  resumeService,
-  reviewPayment,
-} from "../actions";
+import { WorkLogsCard, type WorkLogView } from "./work-logs-card";
+import { cancelService, moveService, pauseService, resumeService } from "../actions";
 
 export const metadata: Metadata = { title: "Detalle de servicio" };
 
 type Slot = { date?: string; from?: string; to?: string };
+type SectionKey = "review" | "assign" | "quote" | "payments" | "schedule" | "work" | "payout" | "contract" | "details" | "photos" | "reviews";
+
+/** Orden de las tarjetas; la del paso actual (FOCUS) sube al principio. */
+const ORDER: SectionKey[] = ["review", "assign", "work", "schedule", "payout", "quote", "payments", "contract", "details", "photos", "reviews"];
+
+/** Tarjeta que va primero según el estado: la acción que toca ahora. */
+const FOCUS: Record<ServiceStatus, SectionKey> = {
+  requested: "assign",
+  assigned: "quote",
+  quoting: "quote",
+  pending_payment: "payments",
+  scheduled: "schedule",
+  in_progress: "work",
+  paused: "work",
+  under_review: "review",
+  completed: "payout",
+  cancelled: "details",
+};
+
+/** datetime-local (hora de Colombia) a partir de un timestamp. */
+function toLocalInput(value: string | null) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const co = new Date(d.getTime() - 5 * 60 * 60 * 1000);
+  return co.toISOString().slice(0, 16);
+}
 
 export default async function ServiceDetailPage(props: PageProps<"/servicios/[id]">) {
   const { id } = await props.params;
   const { supabase } = await requireAdmin();
+  const today = todayCO();
 
   const { data: service } = await supabase
     .from("services")
@@ -53,6 +89,9 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     .maybeSingle();
   if (!service) notFound();
 
+  const status = service.status;
+  const assigning = status === "requested" || status === "assigned";
+
   const [
     { data: expertProfile },
     { data: stages },
@@ -61,12 +100,19 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     { data: events },
     { data: photos },
     { data: reviews },
+    { data: quote },
+    { data: schedule },
+    { data: workLogs },
+    { data: payouts },
     { data: candidates },
+    { data: holidays },
   ] = await Promise.all([
     service.expert_id
       ? supabase
           .from("expert_profiles")
-          .select("user_id, rating_avg, rating_count, is_available, profile:profiles!expert_profiles_user_id_fkey(full_name, email, phone, city)")
+          .select(
+            "user_id, rating_avg, rating_count, is_available, payout_method, payout_account, profile:profiles!expert_profiles_user_id_fkey(full_name, email, phone, city)",
+          )
           .eq("user_id", service.expert_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
@@ -74,7 +120,9 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     supabase.from("payments").select("*").eq("service_id", id).order("created_at"),
     supabase
       .from("contracts")
-      .select("*, signatures:contract_signatures(id, signer_role, signed_at, ip, user_agent, body_hash, signer:profiles!contract_signatures_signer_id_fkey(full_name))")
+      .select(
+        "*, signatures:contract_signatures(id, signer_role, signed_at, ip, body_hash, signer:profiles!contract_signatures_signer_id_fkey(full_name))",
+      )
       .eq("service_id", id)
       .maybeSingle(),
     supabase
@@ -87,24 +135,61 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
       .from("service_reviews")
       .select("*, author:profiles!service_reviews_author_id_fkey(full_name, role), target:profiles!service_reviews_target_id_fkey(full_name)")
       .eq("service_id", id),
-    service.status === "requested" || service.status === "in_review"
+    supabase.from("service_quotes").select("*, items:quote_items(*), materials:quote_materials(*)").eq("service_id", id).maybeSingle(),
+    supabase.from("service_schedule").select("*").eq("service_id", id).maybeSingle(),
+    supabase
+      .from("work_logs")
+      .select("id, work_date, check_in, check_out, notes, photos:work_log_photos(id, storage_path)")
+      .eq("service_id", id)
+      .order("work_date"),
+    supabase.from("expert_payouts").select("*").eq("service_id", id).order("paid_at"),
+    assigning
       ? supabase
           .from("expert_profiles")
           .select(
-            "user_id, rating_avg, rating_count, is_available, profile:profiles!expert_profiles_user_id_fkey(full_name, city), availability:expert_availability(weekday, start_time, end_time)",
+            "user_id, rating_avg, rating_count, is_available, payout_method, payout_account, profile:profiles!expert_profiles_user_id_fkey(full_name, city), availability:expert_availability(weekday, start_time, end_time)",
           )
           .contains("category_ids", [service.category_id])
           .eq("is_available", true)
           .order("rating_avg", { ascending: false })
       : Promise.resolve({ data: null }),
+    service.start_date
+      ? supabase.from("holidays").select("day").gte("day", service.start_date).lte("day", today)
+      : Promise.resolve({ data: null }),
   ]);
 
-  const photoUrls = await Promise.all(
-    (photos ?? []).map(async (p) => ({ ...p, url: await signedUrl(supabase, "service-photos", p.storage_path) })),
-  );
-  const paymentUrls = await Promise.all(
-    (payments ?? []).map(async (p) => ({ ...p, url: await signedUrl(supabase, "payment-proofs", p.proof_path) })),
-  );
+  // Servicios activos de cada candidato del pool.
+  const candidateIds = (candidates ?? []).map((c) => c.user_id);
+  const { data: activeRows } = candidateIds.length
+    ? await supabase.from("services").select("expert_id").in("expert_id", candidateIds).in("status", ACTIVE_SERVICE_STATUSES)
+    : { data: [] as Array<{ expert_id: string | null }> };
+  const activeCount = (activeRows ?? []).reduce<Record<string, number>>((acc, r) => {
+    if (r.expert_id) acc[r.expert_id] = (acc[r.expert_id] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const logs = workLogs ?? [];
+  const [photoUrls, proofUrls] = await Promise.all([
+    signedUrlMap(supabase, "service-photos", [
+      ...(photos ?? []).map((p) => p.storage_path),
+      ...logs.flatMap((l) => l.photos.map((p) => p.storage_path)),
+    ]),
+    signedUrlMap(supabase, "payment-proofs", (payments ?? []).map((p) => p.proof_path)),
+  ]);
+
+  const requestPhotos = (photos ?? []).filter((p) => p.kind !== "before");
+  const beforePhotos = (photos ?? [])
+    .filter((p) => p.kind === "before")
+    .map((p) => ({ id: p.id, url: photoUrls.get(p.storage_path) ?? null, label: "Foto del antes" }));
+  const paymentRows = (payments ?? []).map((p) => ({ ...p, url: p.proof_path ? proofUrls.get(p.proof_path) ?? null : null }));
+  const logViews: WorkLogView[] = logs.map((l) => ({
+    id: l.id,
+    work_date: l.work_date,
+    check_in: l.check_in,
+    check_out: l.check_out,
+    notes: l.notes,
+    photos: l.photos.map((p) => ({ id: p.id, url: photoUrls.get(p.storage_path) ?? null, label: `Jornada ${l.work_date}` })),
+  }));
 
   const expertOptions: ExpertOption[] = (candidates ?? []).map((c) => ({
     id: c.user_id,
@@ -113,49 +198,334 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     rating_avg: Number(c.rating_avg),
     rating_count: c.rating_count,
     is_available: c.is_available,
+    active_services: activeCount[c.user_id] ?? 0,
+    payout_method: c.payout_method,
+    payout_account: c.payout_account,
     availability: [...c.availability].sort((a, b) => a.weekday - b.weekday || a.start_time.localeCompare(b.start_time)),
   }));
 
+  const quoteWithLines = (quote ?? null) as QuoteWithLines | null;
+  const commissionPct = Number(service.commission_pct);
+  const netEstimate = expertNetEstimate(quoteWithLines, commissionPct);
   const stageList = stages ?? [];
-  const phase = servicePhase(service.status, stageList);
-  const phaseInfo = PHASE_INFO[phase];
-  // Para un servicio cancelado, la etapa en la que estaba al cancelarse (según el historial).
-  const cancelEvent = [...(events ?? [])].reverse().find((e) => e.to_status === "cancelled");
-  const cancelledAt = cancelEvent?.from_status ? servicePhase(cancelEvent.from_status, stageList) : null;
-  const firstStage = stageList[0];
-  const contractSigned = contract?.status === "signed";
-  const firstStagePaid = firstStage?.status === "paid";
-  const startBlockers = [
-    !contract && "falta generar el contrato",
-    contract && !contractSigned && "el contrato aún no está firmado por ambas partes",
-    !firstStage && "no hay etapas de pago",
-    firstStage && !firstStagePaid && "la primera etapa aún no está pagada",
-  ].filter((v): v is string => Boolean(v));
-  const canStart = startBlockers.length === 0;
 
-  const hasOpenStage = stageList.some((s) => s.status === "awaiting_payment" || s.status === "proof_uploaded" || s.status === "rejected");
-  const nextPending = stageList.find((s) => s.status === "pending");
-  const canOpenNext = Boolean(nextPending) && !hasOpenStage;
+  // Para un servicio cancelado, el estado que tenía al cancelarse (según el historial).
+  const cancelEvent = [...(events ?? [])].reverse().find((e) => e.to_status === "cancelled");
+  const cancelledFrom = cancelEvent?.from_status ?? null;
+
+  // Jornadas: último día (cierre o hoy) y días hábiles sin registro desde el inicio.
+  const closedDay = dateCO(service.closed_at) ?? (status === "completed" ? dateCO(service.completed_at) : null);
+  const lastDay = closedDay && closedDay < today ? closedDay : today;
+  const loggedDays = new Set(logs.map((l) => l.work_date));
+  const holidaySet = new Set((holidays ?? []).map((h) => h.day));
+  const missingDays =
+    service.start_date && WORK_STATUSES.includes(status) && service.start_date <= lastDay
+      ? businessDaysInRange(service.start_date, lastDay, holidaySet).filter(
+          // Hoy no cuenta como faltante mientras el día está en curso (salvo que ya haya cerrado).
+          (d) => !loggedDays.has(d) && (d !== today || Boolean(closedDay)),
+        )
+      : [];
+
+  const hasProofToVerify = paymentRows.some((p) => p.status === "submitted");
+  const daysToStart = schedule?.business_days_to_start ?? null;
+
+  const hint: string | null = (() => {
+    switch (status) {
+      case "requested":
+        return "Asignar un experto del pool";
+      case "assigned":
+        return quoteWithLines?.status === "returned"
+          ? "Cotización devuelta: el experto la corrige"
+          : quoteWithLines
+            ? "El experto está armando la cotización"
+            : "Esperando la cotización del experto";
+      case "quoting":
+        return "Revisar y aprobar la cotización";
+      case "pending_payment":
+        return hasProofToVerify ? "Hay un comprobante por verificar" : "Esperando el comprobante del cliente";
+      case "scheduled":
+        if (!service.start_date) return "Sin fecha de inicio";
+        return `Inicia el ${formatDayMonth(service.start_date)} · ${
+          daysToStart == null ? "" : daysToStart === 0 ? "inicia hoy" : `${daysToStart === 1 ? "falta" : "faltan"} ${businessDaysLabel(daysToStart)}`
+        }`;
+      case "in_progress":
+        return schedule?.estimated_end_date
+          ? `Desde el ${formatDayMonth(service.start_date)} · fin estimado ${formatDayMonth(schedule.estimated_end_date)}`
+          : service.start_date
+            ? `Desde el ${formatDayMonth(service.start_date)}`
+            : null;
+      case "paused":
+        return service.pause_reason ? `En pausa: ${service.pause_reason}` : "En pausa";
+      case "under_review":
+        return service.review_due_date ? `Verificar con el cliente antes del ${formatDayMonth(service.review_due_date)}` : null;
+      case "completed":
+        return `Finalizado el ${formatDayMonth(service.completed_at)}`;
+      case "cancelled":
+        return "Cancelado en este paso";
+    }
+  })();
 
   const availability = Array.isArray(service.availability) ? (service.availability as Slot[]) : [];
-  const canCancel = service.status !== "completed" && service.status !== "cancelled";
-  const cancelDialog = canCancel && (
-    <ActionDialog
-      triggerLabel="Cancelar servicio"
-      triggerVariant="danger"
-      triggerSize="md"
-      title="Cancelar servicio"
-      description="El cliente y el experto verán el servicio como cancelado. Esta acción no se puede deshacer."
-      action={cancelService}
-      fields={{ service_id: service.id }}
-      submitLabel="Confirmar cancelación"
-      submitVariant="danger"
-    >
-      <Field label="Motivo" htmlFor="reason">
-        <Textarea id="reason" name="reason" required placeholder="Ej.: el cliente ya resolvió el problema." />
-      </Field>
-    </ActionDialog>
-  );
+  const canCancel = status !== "completed" && status !== "cancelled";
+  const reviewOverdue = status === "under_review" && service.review_due_date != null && service.review_due_date < today;
+
+  const showPayout =
+    Boolean(service.expert_id) &&
+    (status === "completed" ||
+      ((status === "in_progress" || status === "paused" || status === "under_review") && service.payout_frequency !== "on_completion") ||
+      (payouts ?? []).length > 0);
+
+  const sections: Array<{ key: SectionKey; node: React.ReactNode }> = [];
+
+  if (status === "under_review") {
+    sections.push({
+      key: "review",
+      node: (
+        <Card>
+          <CardHeader
+            title="En observación"
+            description={`El experto cerró el trabajo el ${formatDateTime(service.closed_at)}; verifica con el cliente que todo quedó bien.`}
+          />
+          <CardBody className="space-y-4">
+            <Alert tone={reviewOverdue ? "error" : "warning"}>
+              Fecha límite para verificar con el cliente: <span className="font-semibold">{formatDate(service.review_due_date)}</span>{" "}
+              (1 día hábil desde el cierre){reviewOverdue ? " · vencida" : ""}.
+            </Alert>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Notas de cierre del experto</p>
+              <p className="mt-1 whitespace-pre-line text-sm leading-relaxed">
+                {service.closing_notes || <span className="text-slate-500">El experto no dejó notas.</span>}
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+              <ActionDialog
+                triggerLabel="Devolver a ejecución"
+                triggerVariant="secondary"
+                triggerSize="md"
+                title="Devolver a ejecución"
+                description="El experto podrá seguir registrando jornadas y volver a cerrar el trabajo."
+                action={moveService}
+                fields={{ service_id: service.id, target: "in_progress" }}
+                submitLabel="Devolver a ejecución"
+                pendingLabel="Guardando…"
+              >
+                <Field label="Motivo" htmlFor="reopen-reason" hint="Obligatorio. Lo verán el experto y el historial.">
+                  <Textarea id="reopen-reason" name="reason" required minLength={5} placeholder="Ej.: el cliente reporta una fuga en la unión." />
+                </Field>
+              </ActionDialog>
+              <ActionDialog
+                triggerLabel="Finalizar servicio"
+                triggerVariant="primary"
+                triggerSize="md"
+                title="Finalizar servicio"
+                description="Confirma que verificaste con el cliente que el trabajo quedó bien. Luego registra el pago al experto."
+                action={moveService}
+                fields={{ service_id: service.id, target: "completed" }}
+                submitLabel="Finalizar servicio"
+                pendingLabel="Finalizando…"
+              >
+                <Field label="Nota (opcional)" htmlFor="complete-reason">
+                  <Textarea id="complete-reason" name="reason" placeholder="Ej.: el cliente confirma por teléfono que todo está bien." />
+                </Field>
+              </ActionDialog>
+            </div>
+          </CardBody>
+        </Card>
+      ),
+    });
+  }
+
+  if (assigning) {
+    sections.push({
+      key: "assign",
+      node: (
+        <Card>
+          <div id="asignacion" className="scroll-mt-6" />
+          <CardHeader
+            title={status === "assigned" ? "Reasignar experto" : "Asignar experto"}
+            description="Expertos disponibles con la categoría del servicio. El experto elegido arma la cotización desde su app."
+          />
+          <CardBody>
+            <AssignForm
+              serviceId={service.id}
+              experts={expertOptions}
+              currentExpertId={service.expert_id}
+              defaultScheduledAt={toLocalInput(service.scheduled_at)}
+            />
+          </CardBody>
+        </Card>
+      ),
+    });
+  }
+
+  if (quoteWithLines || status === "assigned" || status === "quoting") {
+    sections.push({
+      key: "quote",
+      node: (
+        <QuoteCard
+          serviceId={service.id}
+          status={status}
+          quote={quoteWithLines}
+          beforePhotos={beforePhotos}
+          commissionPct={commissionPct}
+        />
+      ),
+    });
+  }
+
+  if (stageList.length > 0) {
+    sections.push({
+      key: "payments",
+      node: <PaymentsCard serviceId={service.id} status={status} stages={stageList} payments={paymentRows} />,
+    });
+  }
+
+  if (STARTED_STATUSES.includes(status) || (status === "cancelled" && service.start_date)) {
+    sections.push({
+      key: "schedule",
+      node: (
+        <ScheduleCard
+          status={status}
+          schedule={schedule ?? null}
+          startedAt={service.started_at}
+          payoutMethod={expertProfile?.payout_method ?? null}
+          payoutAccount={expertProfile?.payout_account ?? null}
+        />
+      ),
+    });
+  }
+
+  if (WORK_STATUSES.includes(status) || logViews.length > 0) {
+    sections.push({
+      key: "work",
+      node: (
+        <WorkLogsCard
+          logs={logViews}
+          startDate={service.start_date}
+          lastDay={closedDay ?? today}
+          closed={Boolean(closedDay)}
+          missingDays={missingDays}
+          payoutFrequency={service.payout_frequency}
+        />
+      ),
+    });
+  }
+
+  if (showPayout && service.expert_id) {
+    sections.push({
+      key: "payout",
+      node: (
+        <PayoutsCard
+          serviceId={service.id}
+          expertId={service.expert_id}
+          payoutMethod={expertProfile?.payout_method ?? null}
+          payoutAccount={expertProfile?.payout_account ?? null}
+          payoutFrequency={service.payout_frequency}
+          netEstimate={netEstimate}
+          payouts={payouts ?? []}
+        />
+      ),
+    });
+  }
+
+  if (contract || (service.expert_id && status !== "cancelled")) {
+    sections.push({
+      key: "contract",
+      node: <ContractCard serviceId={service.id} status={status} contract={(contract ?? null) as ContractWithSignatures | null} />,
+    });
+  }
+
+  sections.push({
+    key: "details",
+    node: (
+      <Card>
+        <CardHeader title="Datos del servicio" />
+        <CardBody className="space-y-5">
+          <p className="whitespace-pre-line text-sm leading-relaxed">{service.description}</p>
+          <DescriptionList
+            columns={3}
+            items={[
+              { label: "Categoría", value: service.category?.name ?? "—" },
+              { label: "Ciudad", value: service.city ?? "—" },
+              { label: "Dirección", value: service.address ?? "—" },
+              { label: "Total aprobado", value: formatCOP(service.estimated_price) },
+              { label: "Comisión", value: `${commissionPct} %` },
+              { label: "Fecha de visita", value: formatDateTime(service.scheduled_at) },
+              { label: "Asignado", value: formatDateTime(service.assigned_at) },
+              { label: "Iniciado", value: formatDateTime(service.started_at) },
+              { label: "Finalizado", value: formatDateTime(service.completed_at) },
+            ]}
+          />
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Disponibilidad del cliente</p>
+            {availability.length === 0 ? (
+              <p className="mt-1 text-sm text-slate-500">El cliente no indicó franjas.</p>
+            ) : (
+              <ul className="mt-1 flex flex-wrap gap-1.5">
+                {availability.map((slot, i) => (
+                  <li key={i} className="rounded-md bg-slate-100 px-2 py-0.5 text-xs">
+                    {formatDate(slot.date ?? null)} {slot.from ? `${formatTime(slot.from)}–${formatTime(slot.to)}` : ""}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </CardBody>
+      </Card>
+    ),
+  });
+
+  sections.push({
+    key: "photos",
+    node: (
+      <Card>
+        <CardHeader title="Fotos del cliente" description="Las que adjuntó al solicitar. URLs firmadas de 60 segundos." />
+        <CardBody>
+          <PhotoGrid
+            photos={requestPhotos.map((p) => ({ id: p.id, url: photoUrls.get(p.storage_path) ?? null, label: "Foto del cliente" }))}
+            empty="El cliente no adjuntó fotos."
+          />
+        </CardBody>
+      </Card>
+    ),
+  });
+
+  if ((reviews ?? []).length > 0) {
+    sections.push({
+      key: "reviews",
+      node: (
+        <Card>
+          <CardHeader title="Reseñas" />
+          <ul className="divide-y divide-border">
+            {(reviews ?? []).map((review) => (
+              <li key={review.id} className="px-5 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm">
+                    <span className="font-medium">{review.author?.full_name || "Usuario"}</span>
+                    <span className="text-slate-500">
+                      {" "}
+                      ({review.author ? ROLE_LABEL[review.author.role] : "—"}) sobre {review.target?.full_name || "—"}
+                    </span>
+                  </p>
+                  <span className="text-sm font-medium text-accent" aria-label={`${review.rating} de 5`}>
+                    {"★".repeat(review.rating)}
+                    <span className="text-slate-300">{"★".repeat(5 - review.rating)}</span>
+                  </span>
+                </div>
+                {review.comment && <p className="mt-1 text-sm text-slate-700">{review.comment}</p>}
+                <p className="mt-1 text-xs text-slate-500">{formatDateTime(review.created_at)}</p>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ),
+    });
+  }
+
+  const focusKey = FOCUS[status];
+  const rank = (key: SectionKey) => (key === focusKey ? -1 : ORDER.indexOf(key));
+  const ordered = [...sections].sort((a, b) => rank(a.key) - rank(b.key));
+  const statusInfo = SERVICE_STATUS[status];
 
   return (
     <>
@@ -163,7 +533,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
         backHref="/servicios"
         backLabel="Servicios"
         title={service.title}
-        meta={<Badge tone={phaseInfo.tone}>{phaseInfo.label}</Badge>}
+        meta={<Badge tone={statusInfo.tone}>{statusInfo.label}</Badge>}
         description={
           <>
             <span className="font-mono">{shortId(service.id)}</span> · {service.category?.name ?? "Sin categoría"} · creado el{" "}
@@ -172,367 +542,70 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
         }
         actions={
           <>
-            {service.status === "requested" && (
-              <ActionButton
-                action={changeServiceStatus}
-                fields={{ service_id: service.id, status: "in_review" }}
-                variant="primary"
-                size="md"
+            {status === "in_progress" && (
+              <ActionDialog
+                triggerLabel="Pausar"
+                triggerVariant="secondary"
+                triggerSize="md"
+                title="Pausar servicio"
+                description="El servicio quedará En pausa hasta que lo reanudes. El cliente y el experto lo verán."
+                action={pauseService}
+                fields={{ service_id: service.id }}
+                submitLabel="Pausar servicio"
+                pendingLabel="Pausando…"
               >
-                Iniciar cotización
-              </ActionButton>
+                <Field label="Motivo" htmlFor="pause-reason">
+                  <Textarea id="pause-reason" name="reason" required minLength={5} placeholder="Ej.: esperando que lleguen los materiales." />
+                </Field>
+              </ActionDialog>
             )}
-            {service.status === "assigned" && (
-              <ActionButton
-                action={changeServiceStatus}
-                fields={{ service_id: service.id, status: "in_progress" }}
-                variant="primary"
-                size="md"
-                disabled={!canStart}
-                title={!canStart ? `No se puede iniciar: ${startBlockers.join("; ")}.` : undefined}
-              >
-                Iniciar servicio
-              </ActionButton>
-            )}
-            {service.status === "in_progress" && (
-              <>
-                <ActionDialog
-                  triggerLabel="Pausar"
-                  triggerVariant="secondary"
-                  triggerSize="md"
-                  title="Pausar servicio"
-                  description="El servicio quedará En pausa hasta que lo reanudes. El cliente y el experto lo verán."
-                  action={pauseService}
-                  fields={{ service_id: service.id }}
-                  submitLabel="Pausar servicio"
-                  pendingLabel="Pausando…"
-                >
-                  <Field label="Motivo" htmlFor="pause-reason">
-                    <Textarea
-                      id="pause-reason"
-                      name="reason"
-                      required
-                      minLength={5}
-                      placeholder="Ej.: esperando que lleguen los materiales."
-                    />
-                  </Field>
-                </ActionDialog>
-                <ActionButton
-                  action={changeServiceStatus}
-                  fields={{ service_id: service.id, status: "completed" }}
-                  variant="primary"
-                  size="md"
-                >
-                  Marcar finalizado
-                </ActionButton>
-              </>
-            )}
-            {service.status === "paused" && (
+            {status === "paused" && (
               <ActionButton action={resumeService} fields={{ service_id: service.id }} variant="primary" size="md">
                 Reanudar
               </ActionButton>
             )}
-            {cancelDialog}
+            {canCancel && (
+              <ActionDialog
+                triggerLabel="Cancelar servicio"
+                triggerVariant="danger"
+                triggerSize="md"
+                title="Cancelar servicio"
+                description="El cliente y el experto verán el servicio como cancelado. Esta acción no se puede deshacer."
+                action={cancelService}
+                fields={{ service_id: service.id }}
+                submitLabel="Confirmar cancelación"
+                submitVariant="danger"
+              >
+                <Field label="Motivo" htmlFor="reason">
+                  <Textarea id="reason" name="reason" required placeholder="Ej.: el cliente ya resolvió el problema." />
+                </Field>
+              </ActionDialog>
+            )}
           </>
         }
       />
 
       <Card className="mb-6">
-        <CardBody>
-          <ServicePhaseBar
-            phase={phase}
-            cancelledAt={cancelledAt}
-            note={phase === "paused" ? service.pause_reason : phase === "done" ? `Finalizado el ${formatDate(service.completed_at)}` : null}
-          />
+        <CardBody className="space-y-4">
+          <ServicePhaseBar status={status} cancelledFrom={cancelledFrom} hint={hint} />
+          {status === "paused" && (
+            <Alert tone="warning">Servicio en pausa{service.pause_reason ? `: ${service.pause_reason}` : "."}</Alert>
+          )}
+          {status === "cancelled" && (
+            <Alert tone="error">
+              Servicio cancelado{cancelledFrom ? ` cuando estaba ${SERVICE_STATUS[cancelledFrom].label}` : ""}
+              {service.cancel_reason ? `. Motivo: ${service.cancel_reason}` : "."}
+            </Alert>
+          )}
+          <MoveControls serviceId={service.id} status={status} />
         </CardBody>
       </Card>
 
-      {service.status === "paused" && (
-        <Alert tone="warning" className="mb-6">
-          Servicio en pausa{service.pause_reason ? `: ${service.pause_reason}` : "."}
-        </Alert>
-      )}
-      {service.status === "assigned" && !canStart && (
-        <Alert tone="warning" className="mb-6">
-          Para iniciar el servicio {startBlockers.join(" y ")}.
-        </Alert>
-      )}
-      {service.status === "cancelled" && (
-        <Alert tone="error" className="mb-6">
-          Servicio cancelado{service.cancel_reason ? `: ${service.cancel_reason}` : "."}
-        </Alert>
-      )}
-
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <Card>
-            <CardHeader title="Datos del servicio" />
-            <CardBody className="space-y-5">
-              <p className="whitespace-pre-line text-sm leading-relaxed">{service.description}</p>
-              <DescriptionList
-                columns={3}
-                items={[
-                  { label: "Categoría", value: service.category?.name ?? "—" },
-                  { label: "Ciudad", value: service.city ?? "—" },
-                  { label: "Dirección", value: service.address ?? "—" },
-                  { label: "Precio estimado", value: formatCOP(service.estimated_price) },
-                  { label: "Comisión", value: `${service.commission_pct} %` },
-                  { label: "Fecha programada", value: formatDateTime(service.scheduled_at) },
-                  { label: "Asignado", value: formatDateTime(service.assigned_at) },
-                  { label: "Iniciado", value: formatDateTime(service.started_at) },
-                  { label: "Completado", value: formatDateTime(service.completed_at) },
-                ]}
-              />
-              <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Disponibilidad del cliente</p>
-                {availability.length === 0 ? (
-                  <p className="mt-1 text-sm text-slate-500">El cliente no indicó franjas.</p>
-                ) : (
-                  <ul className="mt-1 flex flex-wrap gap-1.5">
-                    {availability.map((slot, i) => (
-                      <li key={i} className="rounded-md bg-slate-100 px-2 py-0.5 text-xs">
-                        {formatDate(slot.date ?? null)} {slot.from ? `${formatTime(slot.from)}–${formatTime(slot.to)}` : ""}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader title="Fotos" description="URLs firmadas de 60 segundos." />
-            <CardBody>
-              {photoUrls.length === 0 ? (
-                <p className="text-sm text-slate-500">El cliente no adjuntó fotos.</p>
-              ) : (
-                <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {photoUrls.map((photo) => (
-                    <li key={photo.id}>
-                      <FilePreview url={photo.url} path={photo.storage_path} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardBody>
-          </Card>
-
-          {(service.status === "requested" || service.status === "in_review") && (
-            <Card>
-              <CardHeader
-                title="Asignar experto"
-                description="Solo se muestran expertos disponibles de la categoría del servicio. Al asignar se crean las etapas de pago."
-              />
-              <CardBody>
-                <AssignForm serviceId={service.id} experts={expertOptions} />
-              </CardBody>
-            </Card>
-          )}
-
-          {service.expert_id && (
-            <Card>
-              <CardHeader
-                title="Contrato"
-                description={
-                  contract
-                    ? `Versión ${contract.version} · generado el ${formatDateTime(contract.created_at)}`
-                    : "Aún no se ha generado el contrato de este servicio."
-                }
-                action={
-                  <>
-                    {contract && <Badge tone={CONTRACT_STATUS[contract.status].tone}>{CONTRACT_STATUS[contract.status].label}</Badge>}
-                    <ActionDialog
-                      triggerLabel={contract ? "Regenerar contrato" : "Generar contrato"}
-                      triggerVariant={contract ? "secondary" : "primary"}
-                      title={contract ? "Regenerar contrato" : "Generar contrato"}
-                      description={
-                        contract
-                          ? "Se creará una nueva versión con los datos actuales del servicio. Las firmas existentes quedarán invalidadas y las partes deberán firmar de nuevo."
-                          : "Se generará el contrato a partir de la plantilla con los datos del servicio, el cliente, el experto y las etapas."
-                      }
-                      action={generateContract}
-                      fields={{ service_id: service.id }}
-                      submitLabel={contract ? "Regenerar" : "Generar"}
-                      pendingLabel="Generando…"
-                    >
-                      {contract && <Alert tone="warning">Al regenerar se invalidan las firmas actuales.</Alert>}
-                      <Field label="Términos adicionales (opcional)" htmlFor="extra_terms">
-                        <Textarea id="extra_terms" name="extra_terms" placeholder="Condiciones particulares acordadas con las partes." />
-                      </Field>
-                    </ActionDialog>
-                  </>
-                }
-              />
-              {contract && (
-                <CardBody className="space-y-4">
-                  <DescriptionList
-                    items={[
-                      { label: "Hash SHA-256", value: <span className="break-all font-mono text-xs">{contract.body_hash}</span> },
-                      { label: "Actualizado", value: formatDateTime(contract.updated_at) },
-                    ]}
-                  />
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Firmas</p>
-                    {contract.signatures.length === 0 ? (
-                      <p className="mt-1 text-sm text-slate-500">Ninguna de las partes ha firmado todavía.</p>
-                    ) : (
-                      <ul className="mt-1 divide-y divide-border text-sm">
-                        {contract.signatures.map((sig) => (
-                          <li key={sig.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                            <span>
-                              <span className="font-medium">{ROLE_LABEL[sig.signer_role]}</span>
-                              {sig.signer?.full_name ? ` · ${sig.signer.full_name}` : ""}
-                            </span>
-                            <span className="text-xs text-slate-500">
-                              {formatDateTime(sig.signed_at)} · IP {sig.ip ?? "—"}
-                              {sig.body_hash !== contract.body_hash && " · versión anterior"}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  <details className="group rounded-xl border border-border">
-                    <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium text-primary">
-                      Ver texto del contrato
-                    </summary>
-                    <div className="markdown border-t border-border px-4 py-3 text-sm">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{contract.body_md}</ReactMarkdown>
-                    </div>
-                  </details>
-                </CardBody>
-              )}
-            </Card>
-          )}
-
-          {stageList.length > 0 && (
-            <Card>
-              <CardHeader
-                title="Etapas y pagos"
-                description={`${stageList.filter((s) => s.status === "paid").length} de ${stageList.length} etapas pagadas`}
-                action={
-                  nextPending && (
-                    <ActionButton
-                      action={openNextStage}
-                      fields={{ service_id: service.id }}
-                      variant="primary"
-                      disabled={!canOpenNext}
-                      title={!canOpenNext ? "La etapa actual debe estar pagada antes de abrir la siguiente." : undefined}
-                    >
-                      Abrir siguiente etapa
-                    </ActionButton>
-                  )
-                }
-              />
-              <Table>
-                <THead columns={["#", "Etapa", "Monto", "Fecha límite", "Estado"]} />
-                <TBody>
-                  {stageList.map((stage) => {
-                    const stagePayments = paymentUrls.filter((p) => p.stage_id === stage.id);
-                    return (
-                      <Tr key={stage.id} className="hover:bg-transparent">
-                        <Td className="align-top text-slate-500">{stage.position}</Td>
-                        <Td className="align-top">
-                          <p className="font-medium">{stage.name}</p>
-                          {stage.description && <p className="text-xs text-slate-500">{stage.description}</p>}
-                          {stagePayments.length > 0 && (
-                            <ul className="mt-3 space-y-3">
-                              {stagePayments.map((payment) => (
-                                <li key={payment.id} className="rounded-xl border border-border bg-slate-50 p-3">
-                                  <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <div className="text-sm">
-                                      <span className="font-medium">{formatCOP(payment.amount)}</span> · {PAYMENT_METHOD[payment.method]}
-                                      {payment.provider_ref && <span className="text-slate-500"> · ref. {payment.provider_ref}</span>}
-                                      <span className="block text-xs text-slate-500">
-                                        Enviado el {formatDateTime(payment.created_at)}
-                                        {payment.verified_at && ` · revisado el ${formatDateTime(payment.verified_at)}`}
-                                      </span>
-                                    </div>
-                                    <Badge tone={PAYMENT_STATUS[payment.status].tone}>{PAYMENT_STATUS[payment.status].label}</Badge>
-                                  </div>
-                                  {payment.notes && <p className="mt-2 text-xs text-slate-600">Nota: {payment.notes}</p>}
-                                  <div className="mt-3">
-                                    {payment.proof_path ? (
-                                      <FilePreview url={payment.url} path={payment.proof_path} />
-                                    ) : (
-                                      <p className="text-xs text-slate-500">Sin comprobante adjunto.</p>
-                                    )}
-                                  </div>
-                                  {payment.status === "submitted" && (
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                      <ActionButton
-                                        action={reviewPayment}
-                                        fields={{ service_id: service.id, payment_id: payment.id, decision: "verified" }}
-                                        variant="primary"
-                                      >
-                                        Verificar
-                                      </ActionButton>
-                                      <ActionDialog
-                                        triggerLabel="Rechazar"
-                                        triggerVariant="danger"
-                                        title="Rechazar comprobante"
-                                        description="El cliente verá la nota y podrá enviar un nuevo comprobante."
-                                        action={reviewPayment}
-                                        fields={{ service_id: service.id, payment_id: payment.id, decision: "rejected" }}
-                                        submitLabel="Rechazar pago"
-                                        submitVariant="danger"
-                                      >
-                                        <Field label="Motivo del rechazo" htmlFor={`notes-${payment.id}`}>
-                                          <Textarea
-                                            id={`notes-${payment.id}`}
-                                            name="notes"
-                                            required
-                                            placeholder="Ej.: el comprobante no corresponde al monto de la etapa."
-                                          />
-                                        </Field>
-                                      </ActionDialog>
-                                    </div>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </Td>
-                        <Td className="align-top whitespace-nowrap">{formatCOP(stage.amount)}</Td>
-                        <Td className="align-top whitespace-nowrap text-slate-600">{formatDate(stage.due_date)}</Td>
-                        <Td className="align-top">
-                          <Badge tone={STAGE_STATUS[stage.status].tone}>{STAGE_STATUS[stage.status].label}</Badge>
-                        </Td>
-                      </Tr>
-                    );
-                  })}
-                  {stageList.length === 0 && <EmptyRow colSpan={5}>Sin etapas.</EmptyRow>}
-                </TBody>
-              </Table>
-            </Card>
-          )}
-
-          {(reviews ?? []).length > 0 && (
-            <Card>
-              <CardHeader title="Reseñas" />
-              <ul className="divide-y divide-border">
-                {(reviews ?? []).map((review) => (
-                  <li key={review.id} className="px-5 py-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm">
-                        <span className="font-medium">{review.author?.full_name || "Usuario"}</span>
-                        <span className="text-slate-500">
-                          {" "}
-                          ({review.author ? ROLE_LABEL[review.author.role] : "—"}) sobre {review.target?.full_name || "—"}
-                        </span>
-                      </p>
-                      <span className="text-sm font-medium text-accent" aria-label={`${review.rating} de 5`}>
-                        {"★".repeat(review.rating)}
-                        <span className="text-slate-300">{"★".repeat(5 - review.rating)}</span>
-                      </span>
-                    </div>
-                    {review.comment && <p className="mt-1 text-sm text-slate-700">{review.comment}</p>}
-                    <p className="mt-1 text-xs text-slate-500">{formatDateTime(review.created_at)}</p>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
+        <div className="min-w-0 space-y-6 lg:col-span-2">
+          {ordered.map((section) => (
+            <div key={section.key}>{section.node}</div>
+          ))}
         </div>
 
         <div className="space-y-6">
@@ -570,13 +643,24 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
                     },
                     { label: "Teléfono", value: expertProfile?.profile?.phone ?? "—" },
                     { label: "Email", value: expertProfile?.profile?.email ?? "—" },
-                    { label: "Ciudad", value: expertProfile?.profile?.city ?? "—" },
                     {
                       label: "Calificación",
                       value: expertProfile
                         ? `${Number(expertProfile.rating_avg).toFixed(1)} (${expertProfile.rating_count} reseñas)`
                         : "—",
                     },
+                    {
+                      label: "Medio de pago",
+                      value: (
+                        <>
+                          {payoutMethodLabel(expertProfile?.payout_method)}
+                          {expertProfile?.payout_account && (
+                            <span className="block text-xs text-slate-500">{expertProfile.payout_account}</span>
+                          )}
+                        </>
+                      ),
+                    },
+                    { label: "Periodicidad de pago", value: PAYOUT_FREQUENCY[service.payout_frequency] },
                   ]}
                 />
               )}
@@ -584,7 +668,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
           </Card>
 
           <Card>
-            <CardHeader title="Línea de tiempo" />
+            <CardHeader title="Historial" />
             <CardBody>
               <Timeline events={(events ?? []) as TimelineEvent[]} />
             </CardBody>

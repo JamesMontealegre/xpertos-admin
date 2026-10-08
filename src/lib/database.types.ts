@@ -172,6 +172,13 @@ export type Database = {
             foreignKeyName: "contracts_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: true
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "contracts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: true
             referencedRelation: "services"
             referencedColumns: ["id"]
           },
@@ -188,6 +195,8 @@ export type Database = {
           experience_years: number | null
           full_name: string
           id: string
+          payout_account: string | null
+          payout_method: Database["public"]["Enums"]["payout_method"] | null
           phone: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -205,6 +214,8 @@ export type Database = {
           experience_years?: number | null
           full_name: string
           id?: string
+          payout_account?: string | null
+          payout_method?: Database["public"]["Enums"]["payout_method"] | null
           phone?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -222,6 +233,8 @@ export type Database = {
           experience_years?: number | null
           full_name?: string
           id?: string
+          payout_account?: string | null
+          payout_method?: Database["public"]["Enums"]["payout_method"] | null
           phone?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -278,6 +291,74 @@ export type Database = {
           },
         ]
       }
+      expert_payouts: {
+        Row: {
+          account: string | null
+          amount: number
+          created_by: string | null
+          expert_id: string
+          id: string
+          method: Database["public"]["Enums"]["payout_method"]
+          paid_at: string
+          period_label: string | null
+          reference: string | null
+          service_id: string
+        }
+        Insert: {
+          account?: string | null
+          amount: number
+          created_by?: string | null
+          expert_id: string
+          id?: string
+          method: Database["public"]["Enums"]["payout_method"]
+          paid_at?: string
+          period_label?: string | null
+          reference?: string | null
+          service_id: string
+        }
+        Update: {
+          account?: string | null
+          amount?: number
+          created_by?: string | null
+          expert_id?: string
+          id?: string
+          method?: Database["public"]["Enums"]["payout_method"]
+          paid_at?: string
+          period_label?: string | null
+          reference?: string | null
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expert_payouts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expert_payouts_expert_id_fkey"
+            columns: ["expert_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expert_payouts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "expert_payouts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expert_profiles: {
         Row: {
           approved_at: string
@@ -285,6 +366,8 @@ export type Database = {
           bio: string | null
           category_ids: string[]
           is_available: boolean
+          payout_account: string | null
+          payout_method: Database["public"]["Enums"]["payout_method"] | null
           rating_avg: number
           rating_count: number
           updated_at: string
@@ -296,6 +379,8 @@ export type Database = {
           bio?: string | null
           category_ids?: string[]
           is_available?: boolean
+          payout_account?: string | null
+          payout_method?: Database["public"]["Enums"]["payout_method"] | null
           rating_avg?: number
           rating_count?: number
           updated_at?: string
@@ -307,6 +392,8 @@ export type Database = {
           bio?: string | null
           category_ids?: string[]
           is_available?: boolean
+          payout_account?: string | null
+          payout_method?: Database["public"]["Enums"]["payout_method"] | null
           rating_avg?: number
           rating_count?: number
           updated_at?: string
@@ -328,6 +415,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      holidays: {
+        Row: {
+          day: string
+          name: string
+        }
+        Insert: {
+          day: string
+          name: string
+        }
+        Update: {
+          day?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      payment_accounts: {
+        Row: {
+          account_number: string
+          account_type: string
+          active: boolean
+          bank: string
+          created_at: string
+          holder: string
+          holder_id: string | null
+          id: string
+          sort_order: number
+        }
+        Insert: {
+          account_number: string
+          account_type: string
+          active?: boolean
+          bank: string
+          created_at?: string
+          holder: string
+          holder_id?: string | null
+          id?: string
+          sort_order?: number
+        }
+        Update: {
+          account_number?: string
+          account_type?: string
+          active?: boolean
+          bank?: string
+          created_at?: string
+          holder?: string
+          holder_id?: string | null
+          id?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       payments: {
         Row: {
@@ -387,6 +525,13 @@ export type Database = {
             foreignKeyName: "payments_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "payments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
             referencedRelation: "services"
             referencedColumns: ["id"]
           },
@@ -441,6 +586,97 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      quote_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          line_total: number | null
+          measurement: string | null
+          position: number
+          quantity: number
+          quote_id: string
+          unit: string
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          line_total?: number | null
+          measurement?: string | null
+          position?: number
+          quantity?: number
+          quote_id: string
+          unit?: string
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          line_total?: number | null
+          measurement?: string | null
+          position?: number
+          quantity?: number
+          quote_id?: string
+          unit?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "service_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_materials: {
+        Row: {
+          created_at: string
+          estimated_cost: number | null
+          id: string
+          name: string
+          notes: string | null
+          position: number
+          quantity: number
+          quote_id: string
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_cost?: number | null
+          id?: string
+          name: string
+          notes?: string | null
+          position?: number
+          quantity?: number
+          quote_id: string
+          unit?: string
+        }
+        Update: {
+          created_at?: string
+          estimated_cost?: number | null
+          id?: string
+          name?: string
+          notes?: string | null
+          position?: number
+          quantity?: number
+          quote_id?: string
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_materials_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "service_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_categories: {
         Row: {
@@ -515,6 +751,13 @@ export type Database = {
             foreignKeyName: "service_events_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "service_events_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
             referencedRelation: "services"
             referencedColumns: ["id"]
           },
@@ -524,6 +767,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          kind: string
           service_id: string
           storage_path: string
           uploaded_by: string
@@ -531,6 +775,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          kind?: string
           service_id: string
           storage_path: string
           uploaded_by: string
@@ -538,11 +783,19 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          kind?: string
           service_id?: string
           storage_path?: string
           uploaded_by?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "service_photos_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
+          },
           {
             foreignKeyName: "service_photos_service_id_fkey"
             columns: ["service_id"]
@@ -555,6 +808,95 @@ export type Database = {
             columns: ["uploaded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_quotes: {
+        Row: {
+          admin_notes: string | null
+          approved_labor_total: number | null
+          created_at: string
+          estimated_days: number | null
+          expert_id: string
+          id: string
+          labor_total: number
+          materials_total: number
+          notes: string | null
+          pricing_mode: Database["public"]["Enums"]["pricing_mode"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          service_id: string
+          status: Database["public"]["Enums"]["quote_status"]
+          submitted_at: string | null
+          total: number | null
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          approved_labor_total?: number | null
+          created_at?: string
+          estimated_days?: number | null
+          expert_id: string
+          id?: string
+          labor_total?: number
+          materials_total?: number
+          notes?: string | null
+          pricing_mode?: Database["public"]["Enums"]["pricing_mode"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          service_id: string
+          status?: Database["public"]["Enums"]["quote_status"]
+          submitted_at?: string | null
+          total?: number | null
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          approved_labor_total?: number | null
+          created_at?: string
+          estimated_days?: number | null
+          expert_id?: string
+          id?: string
+          labor_total?: number
+          materials_total?: number
+          notes?: string | null
+          pricing_mode?: Database["public"]["Enums"]["pricing_mode"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          service_id?: string
+          status?: Database["public"]["Enums"]["quote_status"]
+          submitted_at?: string | null
+          total?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_quotes_expert_id_fkey"
+            columns: ["expert_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_quotes_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_quotes_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: true
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "service_quotes_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: true
+            referencedRelation: "services"
             referencedColumns: ["id"]
           },
         ]
@@ -594,6 +936,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_reviews_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
           },
           {
             foreignKeyName: "service_reviews_service_id_fkey"
@@ -653,6 +1002,13 @@ export type Database = {
             foreignKeyName: "service_stages_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "service_stages_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
             referencedRelation: "services"
             referencedColumns: ["id"]
           },
@@ -668,6 +1024,8 @@ export type Database = {
           category_id: string
           city: string | null
           client_id: string
+          closed_at: string | null
+          closing_notes: string | null
           commission_pct: number
           completed_at: string | null
           created_at: string
@@ -676,7 +1034,11 @@ export type Database = {
           expert_id: string | null
           id: string
           pause_reason: string | null
+          payment_date: string | null
+          payout_frequency: Database["public"]["Enums"]["payout_frequency"]
+          review_due_date: string | null
           scheduled_at: string | null
+          start_date: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["service_status"]
           title: string
@@ -691,6 +1053,8 @@ export type Database = {
           category_id: string
           city?: string | null
           client_id: string
+          closed_at?: string | null
+          closing_notes?: string | null
           commission_pct?: number
           completed_at?: string | null
           created_at?: string
@@ -699,7 +1063,11 @@ export type Database = {
           expert_id?: string | null
           id?: string
           pause_reason?: string | null
+          payment_date?: string | null
+          payout_frequency?: Database["public"]["Enums"]["payout_frequency"]
+          review_due_date?: string | null
           scheduled_at?: string | null
+          start_date?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["service_status"]
           title: string
@@ -714,6 +1082,8 @@ export type Database = {
           category_id?: string
           city?: string | null
           client_id?: string
+          closed_at?: string | null
+          closing_notes?: string | null
           commission_pct?: number
           completed_at?: string | null
           created_at?: string
@@ -722,7 +1092,11 @@ export type Database = {
           expert_id?: string | null
           id?: string
           pause_reason?: string | null
+          payment_date?: string | null
+          payout_frequency?: Database["public"]["Enums"]["payout_frequency"]
+          review_due_date?: string | null
           scheduled_at?: string | null
+          start_date?: string | null
           started_at?: string | null
           status?: Database["public"]["Enums"]["service_status"]
           title?: string
@@ -759,12 +1133,182 @@ export type Database = {
           },
         ]
       }
+      work_log_photos: {
+        Row: {
+          created_at: string
+          id: string
+          log_id: string
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          log_id: string
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          log_id?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_log_photos_log_id_fkey"
+            columns: ["log_id"]
+            isOneToOne: false
+            referencedRelation: "work_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      work_logs: {
+        Row: {
+          check_in: string | null
+          check_out: string | null
+          created_at: string
+          expert_id: string
+          id: string
+          notes: string | null
+          service_id: string
+          updated_at: string
+          work_date: string
+        }
+        Insert: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          expert_id: string
+          id?: string
+          notes?: string | null
+          service_id: string
+          updated_at?: string
+          work_date: string
+        }
+        Update: {
+          check_in?: string | null
+          check_out?: string | null
+          created_at?: string
+          expert_id?: string
+          id?: string
+          notes?: string | null
+          service_id?: string
+          updated_at?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_logs_expert_id_fkey"
+            columns: ["expert_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "work_logs_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "work_logs_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      service_schedule: {
+        Row: {
+          business_days_to_start: number | null
+          estimated_days: number | null
+          estimated_end_date: string | null
+          payment_date: string | null
+          payout_frequency:
+            | Database["public"]["Enums"]["payout_frequency"]
+            | null
+          pricing_mode: Database["public"]["Enums"]["pricing_mode"] | null
+          review_due_date: string | null
+          service_id: string | null
+          start_date: string | null
+          start_offset_days: number | null
+          status: Database["public"]["Enums"]["service_status"] | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      _build_contract: {
+        Args: { p_extra_terms?: string; p_service_id: string }
+        Returns: {
+          body_hash: string
+          body_md: string
+          created_at: string
+          created_by: string | null
+          id: string
+          service_id: string
+          status: Database["public"]["Enums"]["contract_status"]
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "contracts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      add_business_days: {
+        Args: { p_days: number; p_from: string }
+        Returns: string
+      }
       admin_dashboard: { Args: never; Returns: Json }
+      admin_move_service: {
+        Args: {
+          p_reason?: string
+          p_service_id: string
+          p_target: Database["public"]["Enums"]["service_status"]
+        }
+        Returns: {
+          address: string | null
+          assigned_at: string | null
+          assigned_by: string | null
+          availability: Json
+          cancel_reason: string | null
+          category_id: string
+          city: string | null
+          client_id: string
+          closed_at: string | null
+          closing_notes: string | null
+          commission_pct: number
+          completed_at: string | null
+          created_at: string
+          description: string
+          estimated_price: number | null
+          expert_id: string | null
+          id: string
+          pause_reason: string | null
+          payment_date: string | null
+          payout_frequency: Database["public"]["Enums"]["payout_frequency"]
+          review_due_date: string | null
+          scheduled_at: string | null
+          start_date: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["service_status"]
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "services"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       approve_application: {
         Args: { p_application_id: string; p_notes?: string }
         Returns: {
@@ -777,6 +1321,8 @@ export type Database = {
           experience_years: number | null
           full_name: string
           id: string
+          payout_account: string | null
+          payout_method: Database["public"]["Enums"]["payout_method"] | null
           phone: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -791,13 +1337,44 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      approve_quote: {
+        Args: {
+          p_labor_total: number
+          p_materials_total?: number
+          p_notes?: string
+          p_service_id: string
+        }
+        Returns: {
+          admin_notes: string | null
+          approved_labor_total: number | null
+          created_at: string
+          estimated_days: number | null
+          expert_id: string
+          id: string
+          labor_total: number
+          materials_total: number
+          notes: string | null
+          pricing_mode: Database["public"]["Enums"]["pricing_mode"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          service_id: string
+          status: Database["public"]["Enums"]["quote_status"]
+          submitted_at: string | null
+          total: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "service_quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       assign_service: {
         Args: {
-          p_estimated_price: number
           p_expert_id: string
           p_scheduled_at?: string
           p_service_id: string
-          p_stages: Json
         }
         Returns: {
           address: string | null
@@ -808,6 +1385,8 @@ export type Database = {
           category_id: string
           city: string | null
           client_id: string
+          closed_at: string | null
+          closing_notes: string | null
           commission_pct: number
           completed_at: string | null
           created_at: string
@@ -816,7 +1395,11 @@ export type Database = {
           expert_id: string | null
           id: string
           pause_reason: string | null
+          payment_date: string | null
+          payout_frequency: Database["public"]["Enums"]["payout_frequency"]
+          review_due_date: string | null
           scheduled_at: string | null
+          start_date: string | null
           started_at: string | null
           status: Database["public"]["Enums"]["service_status"]
           title: string
@@ -829,10 +1412,68 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      business_days_between: {
+        Args: { p_from: string; p_to: string }
+        Returns: number
+      }
+      can_edit_quote: { Args: { p_quote_id: string }; Returns: boolean }
+      can_log_work: {
+        Args: { p_service_id: string; p_work_date: string }
+        Returns: boolean
+      }
+      close_work: {
+        Args: { p_notes?: string; p_service_id: string }
+        Returns: {
+          address: string | null
+          assigned_at: string | null
+          assigned_by: string | null
+          availability: Json
+          cancel_reason: string | null
+          category_id: string
+          city: string | null
+          client_id: string
+          closed_at: string | null
+          closing_notes: string | null
+          commission_pct: number
+          completed_at: string | null
+          created_at: string
+          description: string
+          estimated_price: number | null
+          expert_id: string | null
+          id: string
+          pause_reason: string | null
+          payment_date: string | null
+          payout_frequency: Database["public"]["Enums"]["payout_frequency"]
+          review_due_date: string | null
+          scheduled_at: string | null
+          start_date: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["service_status"]
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "services"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      close_work_missing: { Args: { p_service_id: string }; Returns: string[] }
       current_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      expert_can_choose_frequency: {
+        Args: { p_expert_id: string }
+        Returns: boolean
+      }
+      expert_satisfactory_count: {
+        Args: { p_expert_id: string }
+        Returns: number
+      }
+      fmt_cop: { Args: { p: number }; Returns: string }
+      fmt_qty: { Args: { p: number }; Returns: string }
       generate_contract: {
         Args: { p_extra_terms?: string; p_service_id: string }
         Returns: {
@@ -856,8 +1497,45 @@ export type Database = {
       has_expert_application: { Args: { p_user_id: string }; Returns: boolean }
       has_services_as_client: { Args: { p_user_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      is_business_day: { Args: { p_day: string }; Returns: boolean }
       is_service_party: { Args: { p_service_id: string }; Returns: boolean }
       open_next_stage: { Args: { p_service_id: string }; Returns: undefined }
+      payout_frequency_label: {
+        Args: { p: Database["public"]["Enums"]["payout_frequency"] }
+        Returns: string
+      }
+      payout_method_label: {
+        Args: { p: Database["public"]["Enums"]["payout_method"] }
+        Returns: string
+      }
+      return_quote: {
+        Args: { p_notes: string; p_service_id: string }
+        Returns: {
+          admin_notes: string | null
+          approved_labor_total: number | null
+          created_at: string
+          estimated_days: number | null
+          expert_id: string
+          id: string
+          labor_total: number
+          materials_total: number
+          notes: string | null
+          pricing_mode: Database["public"]["Enums"]["pricing_mode"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          service_id: string
+          status: Database["public"]["Enums"]["quote_status"]
+          submitted_at: string | null
+          total: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "service_quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       review_application: {
         Args: {
           p_application_id: string
@@ -874,6 +1552,8 @@ export type Database = {
           experience_years: number | null
           full_name: string
           id: string
+          payout_account: string | null
+          payout_method: Database["public"]["Enums"]["payout_method"] | null
           phone: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -884,6 +1564,47 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "expert_applications"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      set_payout_frequency: {
+        Args: {
+          p_frequency: Database["public"]["Enums"]["payout_frequency"]
+          p_service_id: string
+        }
+        Returns: {
+          address: string | null
+          assigned_at: string | null
+          assigned_by: string | null
+          availability: Json
+          cancel_reason: string | null
+          category_id: string
+          city: string | null
+          client_id: string
+          closed_at: string | null
+          closing_notes: string | null
+          commission_pct: number
+          completed_at: string | null
+          created_at: string
+          description: string
+          estimated_price: number | null
+          expert_id: string | null
+          id: string
+          pause_reason: string | null
+          payment_date: string | null
+          payout_frequency: Database["public"]["Enums"]["payout_frequency"]
+          review_due_date: string | null
+          scheduled_at: string | null
+          start_date: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["service_status"]
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "services"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -915,6 +1636,40 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      start_due_services: { Args: never; Returns: number }
+      start_offset_days: {
+        Args: { p: Database["public"]["Enums"]["pricing_mode"] }
+        Returns: number
+      }
+      submit_quote: {
+        Args: { p_service_id: string }
+        Returns: {
+          admin_notes: string | null
+          approved_labor_total: number | null
+          created_at: string
+          estimated_days: number | null
+          expert_id: string
+          id: string
+          labor_total: number
+          materials_total: number
+          notes: string | null
+          pricing_mode: Database["public"]["Enums"]["pricing_mode"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          service_id: string
+          status: Database["public"]["Enums"]["quote_status"]
+          submitted_at: string | null
+          total: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "service_quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      today_co: { Args: never; Returns: string }
       try_uuid: { Args: { p: string }; Returns: string }
     }
     Enums: {
@@ -936,14 +1691,27 @@ export type Database = {
         | "other"
         | "photo"
         | "recommendation_letter"
+        | "bank_certificate"
       payment_method: "transfer" | "cash" | "mercado_pago" | "tucompra"
       payment_status: "submitted" | "verified" | "rejected"
+      payout_frequency:
+        | "daily"
+        | "weekly"
+        | "biweekly"
+        | "monthly"
+        | "on_completion"
+      payout_method: "bank_account" | "nequi" | "efecty"
+      pricing_mode: "labor_only" | "all_inclusive"
+      quote_status: "draft" | "submitted" | "returned" | "approved"
       service_status:
         | "requested"
-        | "in_review"
+        | "quoting"
+        | "pending_payment"
+        | "scheduled"
         | "assigned"
         | "in_progress"
         | "paused"
+        | "under_review"
         | "completed"
         | "cancelled"
       stage_status:
@@ -1102,15 +1870,29 @@ export const Constants = {
         "other",
         "photo",
         "recommendation_letter",
+        "bank_certificate",
       ],
       payment_method: ["transfer", "cash", "mercado_pago", "tucompra"],
       payment_status: ["submitted", "verified", "rejected"],
+      payout_frequency: [
+        "daily",
+        "weekly",
+        "biweekly",
+        "monthly",
+        "on_completion",
+      ],
+      payout_method: ["bank_account", "nequi", "efecty"],
+      pricing_mode: ["labor_only", "all_inclusive"],
+      quote_status: ["draft", "submitted", "returned", "approved"],
       service_status: [
         "requested",
-        "in_review",
+        "quoting",
+        "pending_payment",
+        "scheduled",
         "assigned",
         "in_progress",
         "paused",
+        "under_review",
         "completed",
         "cancelled",
       ],

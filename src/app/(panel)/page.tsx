@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { formatDateTime, shortId } from "@/lib/format";
-import { APPLICATION_STATUS } from "@/lib/labels";
-import { PHASE_FILTER_ORDER, PHASE_INFO, servicePhase } from "@/lib/service-phase";
+import { APPLICATION_STATUS, SERVICE_STATUS, SERVICE_STATUS_ORDER } from "@/lib/labels";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, StatCard } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 
 type Dashboard = {
   applications_pending: number;
+  services_by_status: Record<string, number>;
   payments_to_verify: number;
   experts_active: number;
   contracts_pending: number;
@@ -17,7 +17,7 @@ type Dashboard = {
 export default async function DashboardPage() {
   const { supabase } = await requireAdmin();
 
-  const [{ data: metrics, error: metricsError }, { data: applications }, { data: services }, { data: allServices }] =
+  const [{ data: metrics, error: metricsError }, { data: applications }, { data: services }] =
     await Promise.all([
       supabase.rpc("admin_dashboard"),
       supabase
@@ -27,19 +27,14 @@ export default async function DashboardPage() {
         .limit(5),
       supabase
         .from("services")
-        .select("id, title, city, status, created_at, category:service_categories(name), stages:service_stages(position, status)")
+        .select("id, title, city, status, created_at, category:service_categories(name)")
         .order("created_at", { ascending: false })
         .limit(5),
-      supabase.from("services").select("status, stages:service_stages(position, status)"),
     ]);
 
   const dashboard = (metrics ?? {}) as Partial<Dashboard>;
-  const byPhase = (allServices ?? []).reduce<Record<string, number>>((acc, s) => {
-    const phase = servicePhase(s.status, s.stages);
-    acc[phase] = (acc[phase] ?? 0) + 1;
-    return acc;
-  }, {});
-  const totalServices = allServices?.length ?? 0;
+  const byStatus = dashboard.services_by_status ?? {};
+  const totalServices = Object.values(byStatus).reduce((acc, n) => acc + Number(n), 0);
 
   return (
     <>
@@ -60,6 +55,7 @@ export default async function DashboardPage() {
           label="Pagos por verificar"
           value={dashboard.payments_to_verify ?? 0}
           hint="Comprobantes enviados por clientes"
+          href="/servicios?estado=pending_payment"
           tone={(dashboard.payments_to_verify ?? 0) > 0 ? "accent" : "default"}
         />
         <StatCard
@@ -76,17 +72,17 @@ export default async function DashboardPage() {
       </div>
 
       <Card className="mt-6">
-        <CardHeader title="Servicios por etapa" description={`${totalServices} servicios en total`} />
+        <CardHeader title="Servicios por estado" description={`${totalServices} servicios en total`} />
         <CardBody>
-          <ul className="grid gap-3 sm:grid-cols-4 lg:grid-cols-7">
-            {PHASE_FILTER_ORDER.map((phase) => (
-              <li key={phase}>
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {SERVICE_STATUS_ORDER.map((status) => (
+              <li key={status}>
                 <Link
-                  href={`/servicios?fase=${phase}`}
+                  href={`/servicios?estado=${status}`}
                   className="block rounded-xl border border-border px-3 py-3 hover:border-primary/40 hover:bg-slate-50"
                 >
-                  <Badge tone={PHASE_INFO[phase].tone}>{PHASE_INFO[phase].label}</Badge>
-                  <p className="mt-2 text-2xl font-semibold">{byPhase[phase] ?? 0}</p>
+                  <Badge tone={SERVICE_STATUS[status].tone}>{SERVICE_STATUS[status].label}</Badge>
+                  <p className="mt-2 text-2xl font-semibold">{byStatus[status] ?? 0}</p>
                 </Link>
               </li>
             ))}
@@ -147,9 +143,7 @@ export default async function DashboardPage() {
                       <span className="font-mono">{shortId(s.id)}</span>
                     </p>
                   </div>
-                  <Badge tone={PHASE_INFO[servicePhase(s.status, s.stages)].tone}>
-                    {PHASE_INFO[servicePhase(s.status, s.stages)].label}
-                  </Badge>
+                  <Badge tone={SERVICE_STATUS[s.status].tone}>{SERVICE_STATUS[s.status].label}</Badge>
                 </Link>
               </li>
             ))}

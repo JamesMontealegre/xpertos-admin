@@ -12,11 +12,14 @@ import { reopenApplication, reviewApplication } from "./actions";
 export function ReviewActions({
   application,
   missingDocuments,
+  missingPayout = false,
   size = "sm",
   layout = "row",
 }: {
   application: { id: string; full_name: string; status: ApplicationStatus; user_id: string | null };
   missingDocuments: DocumentKind[];
+  /** El aspirante no ha elegido cómo recibir sus pagos. */
+  missingPayout?: boolean;
   size?: "sm" | "md";
   layout?: "row" | "stack";
 }) {
@@ -71,10 +74,12 @@ export function ReviewActions({
         disabled={!canApprove}
         disabledReason="El aspirante aún no se registra en la app"
       >
-        {missingDocuments.length > 0 && (
+        {(missingDocuments.length > 0 || missingPayout) && (
           <Alert tone="warning">
-            Faltan documentos requeridos: {missingDocuments.map((kind) => DOCUMENT_KIND[kind]).join(", ")}. Puedes
-            aprobar igualmente, pero deja constancia en la justificación.
+            {missingPayout && "El aspirante no ha elegido su medio de pago. "}
+            {missingDocuments.length > 0 &&
+              `Faltan documentos requeridos: ${missingDocuments.map((kind) => DOCUMENT_KIND[kind]).join(", ")}. `}
+            Puedes aprobar igualmente, pero deja constancia en la justificación.
           </Alert>
         )}
         <Field label="Justificación" htmlFor={`approve-notes-${application.id}`} hint="Obligatoria. El aspirante la verá en la app.">

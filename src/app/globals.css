@@ -33,3 +33,29 @@ body {
 .markdown table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.875rem; }
 .markdown th, .markdown td { border: 1px solid var(--border); padding: 0.375rem 0.625rem; text-align: left; }
 .markdown th { background: #f1f5f9; }
+.markdown h3 { font-size: 0.9375rem; font-weight: 600; margin: 1rem 0 0.5rem; }
+.markdown strong { font-weight: 600; }
+
+/* Contrato imprimible: /servicios/[id]/contrato */
+@page {
+  size: A4;
+  margin: 16mm 16mm 18mm;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  .contract-body h2,
+  .contract-body h3 {
+    break-after: avoid;
+  }
+  .contract-body table,
+  .contract-body tr {
+    break-inside: avoid;
+  }
+  .contract-body th {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

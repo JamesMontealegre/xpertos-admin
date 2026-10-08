@@ -6,8 +6,9 @@ import {
   APPLICATION_STATUS,
   APPLICATION_STATUS_ORDER,
   DOCUMENT_KIND,
-  REQUIRED_DOCUMENTS,
   missingRequiredDocuments,
+  payoutMethodLabel,
+  requiredDocuments,
   type ApplicationStatus,
   type DocumentKind,
 } from "@/lib/labels";
@@ -21,7 +22,7 @@ import { buttonClasses, LinkButton } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Solicitudes" };
 
-const COLUMNS = ["Nombre", "Ciudad", "Categorías", "Experiencia", "Documentos", "Estado", "Fecha", "Acciones"];
+const COLUMNS = ["Nombre", "Ciudad", "Categorías", "Experiencia", "Medio de pago", "Documentos", "Estado", "Fecha", "Acciones"];
 
 export default async function ApplicationsPage(props: PageProps<"/solicitudes">) {
   const searchParams = await props.searchParams;
@@ -33,7 +34,7 @@ export default async function ApplicationsPage(props: PageProps<"/solicitudes">)
 
   let query = supabase
     .from("expert_applications")
-    .select("id, full_name, email, city, category_ids, experience_years, status, created_at, user_id")
+    .select("id, full_name, email, city, category_ids, experience_years, status, created_at, user_id, payout_method, payout_account")
     .order("created_at", { ascending: false })
     .limit(200);
   if (status) query = query.eq("status", status);
@@ -104,8 +105,9 @@ export default async function ApplicationsPage(props: PageProps<"/solicitudes">)
               </EmptyRow>
             )}
             {(applications ?? []).map((a) => {
-              const missing = missingRequiredDocuments(kindsByApplication.get(a.id) ?? []);
-              const uploaded = REQUIRED_DOCUMENTS.length - missing.length;
+              const required = requiredDocuments(a.payout_method);
+              const missing = missingRequiredDocuments(kindsByApplication.get(a.id) ?? [], a.payout_method);
+              const uploaded = required.length - missing.length;
               return (
                 <Tr key={a.id}>
                   <Td>
@@ -126,8 +128,22 @@ export default async function ApplicationsPage(props: PageProps<"/solicitudes">)
                   </Td>
                   <Td className="whitespace-nowrap">{a.experience_years != null ? `${a.experience_years} años` : "—"}</Td>
                   <Td>
+                    {a.payout_method ? (
+                      <>
+                        <span className="whitespace-nowrap">{payoutMethodLabel(a.payout_method)}</span>
+                        {a.payout_account && (
+                          <span className="block max-w-[10rem] truncate text-xs text-slate-500" title={a.payout_account}>
+                            {a.payout_account}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <Badge tone="orange">Sin elegir</Badge>
+                    )}
+                  </Td>
+                  <Td>
                     <Badge tone={missing.length === 0 ? "green" : uploaded === 0 ? "slate" : "amber"}>
-                      {uploaded}/{REQUIRED_DOCUMENTS.length} requeridos
+                      {uploaded}/{required.length} requeridos
                     </Badge>
                     {missing.length > 0 && (
                       <p className="mt-1 max-w-[14rem] text-xs text-slate-500">

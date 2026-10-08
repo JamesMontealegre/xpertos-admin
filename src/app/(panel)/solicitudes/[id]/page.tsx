@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
-import { APPLICATION_STATUS, DOCUMENT_KIND, REQUIRED_DOCUMENTS, missingRequiredDocuments } from "@/lib/labels";
+import {
+  APPLICATION_STATUS,
+  DOCUMENT_KIND,
+  missingRequiredDocuments,
+  payoutMethodLabel,
+  requiredDocuments,
+} from "@/lib/labels";
 import { signedUrl } from "@/lib/storage";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +53,9 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
     })),
   );
 
-  const missingDocuments = missingRequiredDocuments((documents ?? []).map((d) => d.kind));
+  const required = requiredDocuments(application.payout_method);
+  const missingDocuments = missingRequiredDocuments((documents ?? []).map((d) => d.kind), application.payout_method);
+  const missingPayout = !application.payout_method;
   const status = APPLICATION_STATUS[application.status];
   const isFinal = application.status === "approved";
 
@@ -75,6 +83,24 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
                   {
                     label: "Experiencia",
                     value: application.experience_years != null ? `${application.experience_years} años` : "—",
+                  },
+                  {
+                    label: "Medio de pago",
+                    value: application.payout_method ? (
+                      payoutMethodLabel(application.payout_method)
+                    ) : (
+                      <Badge tone="orange">Sin elegir</Badge>
+                    ),
+                  },
+                  {
+                    label: application.payout_method === "bank_account" ? "Datos de la cuenta" : "Número / cuenta",
+                    value: application.payout_account ? (
+                      <span className="whitespace-pre-line">{application.payout_account}</span>
+                    ) : application.payout_method === "efecty" ? (
+                      "No aplica (cobra en Puntos Efecty con su cédula)"
+                    ) : (
+                      "—"
+                    ),
                   },
                   {
                     label: "Registro en la app",
@@ -125,19 +151,27 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
               description="Los enlaces están firmados y expiran a los 60 segundos; recarga la página si vencen."
             />
             <CardBody className="space-y-4">
-              {missingDocuments.length > 0 ? (
+              {missingDocuments.length > 0 || missingPayout ? (
                 <Alert tone="warning">
-                  <p className="font-medium">
-                    Faltan por cargar {missingDocuments.length} de {REQUIRED_DOCUMENTS.length} documentos requeridos:
-                  </p>
+                  {missingDocuments.length > 0 && (
+                    <p className="font-medium">
+                      Faltan por cargar {missingDocuments.length} de {required.length} documentos requeridos:
+                    </p>
+                  )}
                   <ul className="mt-1 list-inside list-disc">
+                    {missingPayout && <li>Medio de pago: el aspirante aún no lo elige</li>}
                     {missingDocuments.map((kind) => (
                       <li key={kind}>{DOCUMENT_KIND[kind]}</li>
                     ))}
                   </ul>
                 </Alert>
               ) : (
-                <Alert tone="success">Los {REQUIRED_DOCUMENTS.length} documentos requeridos están cargados.</Alert>
+                <Alert tone="success">Los {required.length} documentos requeridos están cargados.</Alert>
+              )}
+              {application.payout_method === "bank_account" && (
+                <p className="text-xs text-slate-500">
+                  Eligió recibir pagos en cuenta bancaria: la certificación bancaria es requerida.
+                </p>
               )}
               {docsWithUrls.length === 0 ? (
                 <p className="text-sm text-slate-500">
@@ -194,7 +228,13 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
                   )}
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-slate-700">Decisión</p>
-                    <ReviewActions application={application} missingDocuments={missingDocuments} size="md" layout="stack" />
+                    <ReviewActions
+                      application={application}
+                      missingDocuments={missingDocuments}
+                      missingPayout={missingPayout}
+                      size="md"
+                      layout="stack"
+                    />
                     {!application.user_id && application.status !== "rejected" && (
                       <p className="text-xs text-slate-500">
                         No es posible aprobar: el aspirante aún no se registra en la app. Al registrarse con el correo{" "}
@@ -214,8 +254,15 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
                           id="notes"
                           name="notes"
                           defaultValue={
-                            missingDocuments.length > 0 && application.status !== "needs_info"
-                              ? `Por favor carga: ${missingDocuments.map((kind) => DOCUMENT_KIND[kind]).join(", ")}.`
+                            (missingDocuments.length > 0 || missingPayout) && application.status !== "needs_info"
+                              ? [
+                                  missingPayout ? "Por favor elige tu medio de pago." : "",
+                                  missingDocuments.length > 0
+                                    ? `Por favor carga: ${missingDocuments.map((kind) => DOCUMENT_KIND[kind]).join(", ")}.`
+                                    : "",
+                                ]
+                                  .filter(Boolean)
+                                  .join(" ")
                               : ""
                           }
                           placeholder="Ej.: falta el RUT actualizado y el certificado de antecedentes."

@@ -1,73 +1,58 @@
-import type { ServiceStatus, StageStatus, Tone } from "./labels";
+import type { ServiceStatus } from "./labels";
 
 /**
- * Etapa operativa de un servicio, la que ve el operador en la barra de avance.
- * Se deduce del estado en la base y del pago de la primera etapa (anticipo):
+ * Pasos de la barra de avance del servicio. Cada estado de la base es un paso, salvo
+ * En pausa, que comparte el paso de En ejecución (el servicio está en uno o en el otro),
+ * y Cancelado, que se marca con una X en el paso donde se canceló.
  *
- *   requested / in_review         → Cotización
- *   assigned, anticipo sin pagar  → Pendiente de pago
- *   assigned, anticipo pagado     → Planeación
- *   in_progress                   → En ejecución   ┐ mismo paso de la barra:
- *   paused                        → En pausa       ┘ uno o el otro
- *   completed                     → Finalizado
+ *   requested → assigned → quoting → pending_payment → scheduled → in_progress ⇄ paused
+ *             → under_review → completed
  */
-export type ServicePhase = "quote" | "payment" | "planning" | "execution" | "paused" | "done" | "cancelled";
+export type FlowStatus = Exclude<ServiceStatus, "paused" | "cancelled">;
 
-export type PhaseStep = { key: "quote" | "payment" | "planning" | "execution" | "done"; label: string; hint: string };
-
-export const PHASE_STEPS: PhaseStep[] = [
-  { key: "quote", label: "Cotización", hint: "Asignar experto, precio y etapas de pago" },
-  { key: "payment", label: "Pendiente de pago", hint: "Esperando el pago del anticipo" },
-  { key: "planning", label: "Planeación", hint: "Contrato firmado y agenda antes de iniciar" },
-  { key: "execution", label: "En ejecución", hint: "El experto está trabajando" },
-  { key: "done", label: "Finalizado", hint: "Servicio terminado" },
+export const FLOW: FlowStatus[] = [
+  "requested",
+  "assigned",
+  "quoting",
+  "pending_payment",
+  "scheduled",
+  "in_progress",
+  "under_review",
+  "completed",
 ];
 
-export const PHASE_INFO: Record<ServicePhase, { label: string; tone: Tone }> = {
-  quote: { label: "Cotización", tone: "slate" },
-  payment: { label: "Pendiente de pago", tone: "orange" },
-  planning: { label: "Planeación", tone: "blue" },
-  execution: { label: "En ejecución", tone: "teal" },
-  paused: { label: "En pausa", tone: "amber" },
-  done: { label: "Finalizado", tone: "green" },
-  cancelled: { label: "Cancelado", tone: "red" },
+export const FLOW_LABEL: Record<FlowStatus, string> = {
+  requested: "Solicitado",
+  assigned: "Asignado",
+  quoting: "En cotización",
+  pending_payment: "Pendiente de pago",
+  scheduled: "Programado",
+  in_progress: "En ejecución",
+  under_review: "En observación",
+  completed: "Finalizado",
 };
 
-/** Orden de los filtros del listado. */
-export const PHASE_FILTER_ORDER: ServicePhase[] = ["quote", "payment", "planning", "execution", "paused", "done", "cancelled"];
-
-export function isServicePhase(value: string): value is ServicePhase {
-  return (PHASE_FILTER_ORDER as string[]).includes(value);
+/** Paso de la barra para un estado (En pausa = paso de En ejecución). -1 para Cancelado. */
+export function flowIndex(status: ServiceStatus): number {
+  if (status === "paused") return FLOW.indexOf("in_progress");
+  if (status === "cancelled") return -1;
+  return FLOW.indexOf(status);
 }
 
-type StageLike = { position: number; status: StageStatus };
-
-export function firstStagePaid(stages: StageLike[]): boolean {
-  const first = [...stages].sort((a, b) => a.position - b.position)[0];
-  return first?.status === "paid";
+/** Siguiente paso del flujo; null si el servicio está pausado, cancelado o finalizado. */
+export function nextStatus(status: ServiceStatus): FlowStatus | null {
+  if (status === "paused" || status === "cancelled") return null;
+  return FLOW[FLOW.indexOf(status) + 1] ?? null;
 }
 
-/** Etapa de un servicio a partir de su estado; `cancelled` solo si el estado es cancelado. */
-export function servicePhase(status: ServiceStatus, stages: StageLike[]): ServicePhase {
-  switch (status) {
-    case "requested":
-    case "in_review":
-      return "quote";
-    case "assigned":
-      return firstStagePaid(stages) ? "planning" : "payment";
-    case "in_progress":
-      return "execution";
-    case "paused":
-      return "paused";
-    case "completed":
-      return "done";
-    case "cancelled":
-      return "cancelled";
-  }
+/** Paso anterior del flujo; null si el servicio está pausado, cancelado o recién solicitado. */
+export function previousStatus(status: ServiceStatus): FlowStatus | null {
+  if (status === "paused" || status === "cancelled") return null;
+  return FLOW[FLOW.indexOf(status) - 1] ?? null;
 }
 
-/** Índice del paso de la barra (En pausa comparte el paso de En ejecución). -1 si no aplica. */
-export function phaseStepIndex(phase: ServicePhase): number {
-  if (phase === "paused") return PHASE_STEPS.findIndex((s) => s.key === "execution");
-  return PHASE_STEPS.findIndex((s) => s.key === phase);
-}
+/** Estados desde los que existe el contrato de inicio (pago verificado). */
+export const STARTED_STATUSES: ServiceStatus[] = ["scheduled", "in_progress", "paused", "under_review", "completed"];
+
+/** Estados en los que el experto ya está (o estuvo) trabajando: se muestran las jornadas. */
+export const WORK_STATUSES: ServiceStatus[] = ["in_progress", "paused", "under_review", "completed"];

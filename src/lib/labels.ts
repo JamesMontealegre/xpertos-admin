@@ -9,22 +9,87 @@ export type ContractStatus = Enums["contract_status"];
 export type UserRole = Enums["user_role"];
 export type DocumentKind = Enums["document_kind"];
 export type PaymentMethod = Enums["payment_method"];
+export type PricingMode = Enums["pricing_mode"];
+export type QuoteStatus = Enums["quote_status"];
+export type PayoutFrequency = Enums["payout_frequency"];
+export type PayoutMethod = Enums["payout_method"];
 
 export type Tone = "slate" | "amber" | "blue" | "teal" | "green" | "red" | "orange";
 
-/**
- * Estado técnico del servicio en la base (se ve en el historial). Para el operador, el avance se
- * muestra con las etapas de `service-phase.ts` (Cotización → … → Finalizado).
- */
+/** Estado del servicio (el mismo que ve el cliente y el experto en sus apps). */
 export const SERVICE_STATUS: Record<ServiceStatus, { label: string; tone: Tone }> = {
-  requested: { label: "Solicitud recibida", tone: "slate" },
-  in_review: { label: "En cotización", tone: "slate" },
-  assigned: { label: "Experto asignado", tone: "blue" },
+  requested: { label: "Solicitado", tone: "slate" },
+  assigned: { label: "Asignado", tone: "blue" },
+  quoting: { label: "En cotización", tone: "blue" },
+  pending_payment: { label: "Pendiente de pago", tone: "orange" },
+  scheduled: { label: "Programado", tone: "teal" },
   in_progress: { label: "En ejecución", tone: "teal" },
   paused: { label: "En pausa", tone: "amber" },
+  under_review: { label: "En observación", tone: "amber" },
   completed: { label: "Finalizado", tone: "green" },
   cancelled: { label: "Cancelado", tone: "red" },
 };
+
+/** Orden de los filtros del listado y de las tarjetas del dashboard. */
+export const SERVICE_STATUS_ORDER: ServiceStatus[] = [
+  "requested",
+  "assigned",
+  "quoting",
+  "pending_payment",
+  "scheduled",
+  "in_progress",
+  "paused",
+  "under_review",
+  "completed",
+  "cancelled",
+];
+
+export function isServiceStatus(value: string): value is ServiceStatus {
+  return (SERVICE_STATUS_ORDER as string[]).includes(value);
+}
+
+/** Estados en los que el servicio ocupa al experto (cuentan como "servicios activos"). */
+export const ACTIVE_SERVICE_STATUSES: ServiceStatus[] = [
+  "assigned",
+  "quoting",
+  "pending_payment",
+  "scheduled",
+  "in_progress",
+  "paused",
+  "under_review",
+];
+
+export const PRICING_MODE: Record<PricingMode, { label: string; short: string }> = {
+  labor_only: { label: "Solo mano de obra", short: "Solo mano de obra" },
+  all_inclusive: { label: "Todo incluido (materiales + mano de obra)", short: "Todo incluido" },
+};
+
+export const QUOTE_STATUS: Record<QuoteStatus, { label: string; tone: Tone }> = {
+  draft: { label: "Borrador", tone: "slate" },
+  submitted: { label: "Enviada", tone: "blue" },
+  returned: { label: "Devuelta", tone: "orange" },
+  approved: { label: "Aprobada", tone: "green" },
+};
+
+export const PAYOUT_FREQUENCY: Record<PayoutFrequency, string> = {
+  daily: "Diario",
+  weekly: "Semanal",
+  biweekly: "Quincenal",
+  monthly: "Mensual",
+  on_completion: "Obra terminada",
+};
+
+export const PAYOUT_METHOD: Record<PayoutMethod, string> = {
+  bank_account: "Cuenta bancaria",
+  nequi: "Nequi",
+  efecty: "Efectivo (Puntos Efecty)",
+};
+
+export const PAYOUT_METHOD_ORDER: PayoutMethod[] = ["bank_account", "nequi", "efecty"];
+
+export function payoutMethodLabel(method: PayoutMethod | null | undefined) {
+  return method ? PAYOUT_METHOD[method] : "Sin definir";
+}
 
 export const STAGE_STATUS: Record<StageStatus, { label: string; tone: Tone }> = {
   pending: { label: "Pendiente", tone: "slate" },
@@ -79,12 +144,14 @@ export const DOCUMENT_KIND: Record<DocumentKind, string> = {
   background_check: "Certificado de antecedentes",
   certificate: "Certificado o diploma",
   portfolio: "Portafolio de trabajos",
+  bank_certificate: "Certificación bancaria",
   other: "Otro",
 };
 
 /**
  * Documentos requeridos de una postulación (los mismos que la app de usuarios marca como
  * "Requerido"). RUT, antecedentes, certificados, portafolio y "otro" son opcionales.
+ * La certificación bancaria se exige solo si el aspirante elige recibir pagos en cuenta bancaria.
  */
 export const REQUIRED_DOCUMENTS: DocumentKind[] = [
   "id_front",
@@ -94,8 +161,15 @@ export const REQUIRED_DOCUMENTS: DocumentKind[] = [
   "recommendation_letter",
 ];
 
-export function missingRequiredDocuments(uploaded: DocumentKind[]): DocumentKind[] {
-  return REQUIRED_DOCUMENTS.filter((kind) => !uploaded.includes(kind));
+export function requiredDocuments(payoutMethod: PayoutMethod | null | undefined): DocumentKind[] {
+  return payoutMethod === "bank_account" ? [...REQUIRED_DOCUMENTS, "bank_certificate"] : REQUIRED_DOCUMENTS;
+}
+
+export function missingRequiredDocuments(
+  uploaded: DocumentKind[],
+  payoutMethod: PayoutMethod | null | undefined,
+): DocumentKind[] {
+  return requiredDocuments(payoutMethod).filter((kind) => !uploaded.includes(kind));
 }
 
 export const PAYMENT_METHOD: Record<PaymentMethod, string> = {
@@ -117,6 +191,11 @@ export const EVENT_TYPE: Record<string, string> = {
   contract_created: "Contrato generado",
   contract_signed: "Contrato firmado",
   review_created: "Reseña publicada",
+  quote_submitted: "Cotización enviada",
+  quote_approved: "Cotización aprobada",
+  quote_returned: "Cotización devuelta",
+  payout_frequency_set: "Periodicidad de pago elegida",
+  work_closed: "Trabajo cerrado por el experto",
 };
 
 export function eventLabel(type: string) {

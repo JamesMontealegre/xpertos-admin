@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
+import { ACTIVE_SERVICE_STATUSES, payoutMethodLabel } from "@/lib/labels";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -9,7 +10,7 @@ import { EmptyRow, Table, TBody, Td, THead, Tr } from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Expertos" };
 
-const COLUMNS = ["Nombre", "Ciudad", "Categorías", "Calificación", "Disponible", "Servicios activos", "Aprobado"];
+const COLUMNS = ["Nombre", "Ciudad", "Categorías", "Calificación", "Disponible", "Servicios activos", "Medio de pago", "Aprobado"];
 
 export default async function ExpertsPage() {
   const { supabase } = await requireAdmin();
@@ -17,10 +18,10 @@ export default async function ExpertsPage() {
   const [{ data: experts, error }, { data: categories }, { data: activeServices }] = await Promise.all([
     supabase
       .from("expert_profiles")
-      .select("user_id, category_ids, rating_avg, rating_count, is_available, approved_at, profile:profiles!expert_profiles_user_id_fkey(full_name, city, email)")
+      .select("user_id, category_ids, rating_avg, rating_count, is_available, approved_at, payout_method, profile:profiles!expert_profiles_user_id_fkey(full_name, city, email)")
       .order("approved_at", { ascending: false }),
     supabase.from("service_categories").select("id, name"),
-    supabase.from("services").select("expert_id").in("status", ["assigned", "in_progress", "paused"]).not("expert_id", "is", null),
+    supabase.from("services").select("expert_id").in("status", ACTIVE_SERVICE_STATUSES).not("expert_id", "is", null),
   ]);
 
   const categoryName = new Map((categories ?? []).map((c) => [c.id, c.name]));
@@ -63,6 +64,9 @@ export default async function ExpertsPage() {
                 </Td>
                 <Td>{e.is_available ? <Badge tone="green">Sí</Badge> : <Badge tone="slate">No</Badge>}</Td>
                 <Td>{activeCount[e.user_id] ?? 0}</Td>
+                <Td className="whitespace-nowrap">
+                  {e.payout_method ? payoutMethodLabel(e.payout_method) : <span className="text-slate-400">Sin definir</span>}
+                </Td>
                 <Td className="whitespace-nowrap text-slate-600">
                   {formatDate(e.approved_at)}
                 </Td>

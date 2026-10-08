@@ -9,6 +9,7 @@ const ITEMS = [
   { href: "/solicitudes", label: "Solicitudes" },
   { href: "/servicios", label: "Servicios" },
   { href: "/expertos", label: "Expertos" },
+  { href: "/configuracion/cuentas", label: "Cuentas de recaudo" },
 ] as const;
 
 export function SidebarNav() {
