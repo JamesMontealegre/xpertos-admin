@@ -5,10 +5,8 @@ import { formatDate } from "@/lib/format";
 import {
   APPLICATION_STATUS,
   APPLICATION_STATUS_ORDER,
-  DOCUMENT_KIND,
-  missingRequiredDocuments,
+  applicationRequirements,
   payoutMethodLabel,
-  requiredDocuments,
   type ApplicationStatus,
   type DocumentKind,
 } from "@/lib/labels";
@@ -19,6 +17,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyRow, Table, TBody, Td, THead, Tr } from "@/components/ui/table";
 import { StatusTabs } from "@/components/status-tabs";
 import { buttonClasses, LinkButton } from "@/components/ui/button";
+import { RequirementsBadge } from "@/components/requirements-badge";
 
 export const metadata: Metadata = { title: "Solicitudes" };
 
@@ -105,9 +104,7 @@ export default async function ApplicationsPage(props: PageProps<"/solicitudes">)
               </EmptyRow>
             )}
             {(applications ?? []).map((a) => {
-              const required = requiredDocuments(a.payout_method);
-              const missing = missingRequiredDocuments(kindsByApplication.get(a.id) ?? [], a.payout_method);
-              const uploaded = required.length - missing.length;
+              const requirements = applicationRequirements(kindsByApplication.get(a.id) ?? [], a.payout_method, a.payout_account);
               return (
                 <Tr key={a.id}>
                   <Td>
@@ -141,15 +138,8 @@ export default async function ApplicationsPage(props: PageProps<"/solicitudes">)
                       <Badge tone="orange">Sin elegir</Badge>
                     )}
                   </Td>
-                  <Td>
-                    <Badge tone={missing.length === 0 ? "green" : uploaded === 0 ? "slate" : "amber"}>
-                      {uploaded}/{required.length} requeridos
-                    </Badge>
-                    {missing.length > 0 && (
-                      <p className="mt-1 max-w-[14rem] text-xs text-slate-500">
-                        Faltan: {missing.map((kind) => DOCUMENT_KIND[kind]).join(", ")}
-                      </p>
-                    )}
+                  <Td className="whitespace-nowrap">
+                    <RequirementsBadge requirements={requirements} />
                   </Td>
                   <Td>
                     <Badge tone={APPLICATION_STATUS[a.status].tone}>{APPLICATION_STATUS[a.status].label}</Badge>

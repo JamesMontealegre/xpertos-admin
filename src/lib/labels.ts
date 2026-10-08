@@ -161,15 +161,59 @@ export const REQUIRED_DOCUMENTS: DocumentKind[] = [
   "recommendation_letter",
 ];
 
-export function requiredDocuments(payoutMethod: PayoutMethod | null | undefined): DocumentKind[] {
-  return payoutMethod === "bank_account" ? [...REQUIRED_DOCUMENTS, "bank_certificate"] : REQUIRED_DOCUMENTS;
-}
+export type Requirement = {
+  key: string;
+  label: string;
+  done: boolean;
+  /** Aclaración corta, p. ej. qué medio de pago eligió. */
+  detail?: string;
+};
 
-export function missingRequiredDocuments(
+/**
+ * Requisitos de una postulación: siempre 6. Los 5 documentos requeridos más el soporte del medio
+ * de pago, que se cumple según lo que eligió el aspirante: certificación bancaria (cuenta bancaria),
+ * número registrado (Nequi) o solo la elección (Efecty).
+ */
+export const REQUIREMENTS_TOTAL = REQUIRED_DOCUMENTS.length + 1;
+
+export function applicationRequirements(
   uploaded: DocumentKind[],
   payoutMethod: PayoutMethod | null | undefined,
-): DocumentKind[] {
-  return requiredDocuments(payoutMethod).filter((kind) => !uploaded.includes(kind));
+  payoutAccount: string | null | undefined,
+): Requirement[] {
+  const documents = REQUIRED_DOCUMENTS.map((kind) => ({
+    key: kind,
+    label: DOCUMENT_KIND[kind],
+    done: uploaded.includes(kind),
+  }));
+
+  let payout: Requirement;
+  if (payoutMethod === "bank_account") {
+    payout = {
+      key: "payout",
+      label: DOCUMENT_KIND.bank_certificate,
+      done: uploaded.includes("bank_certificate"),
+      detail: "Medio de pago: cuenta bancaria",
+    };
+  } else if (payoutMethod === "nequi") {
+    payout = {
+      key: "payout",
+      label: "Número Nequi",
+      done: Boolean(payoutAccount?.trim()),
+      detail: payoutAccount?.trim() ? `Medio de pago: Nequi ${payoutAccount.trim()}` : "Medio de pago: Nequi",
+    };
+  } else if (payoutMethod === "efecty") {
+    payout = {
+      key: "payout",
+      label: "Medio de pago",
+      done: true,
+      detail: "Efectivo en Puntos Efecty, a nombre y cédula del aspirante",
+    };
+  } else {
+    payout = { key: "payout", label: "Medio de pago", done: false, detail: "Aún no lo elige" };
+  }
+
+  return [...documents, payout];
 }
 
 export const PAYMENT_METHOD: Record<PaymentMethod, string> = {

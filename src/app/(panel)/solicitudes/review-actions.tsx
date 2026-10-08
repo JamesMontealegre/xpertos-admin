@@ -1,7 +1,7 @@
 import { ActionDialog } from "@/components/ui/dialog";
 import { Alert } from "@/components/ui/alert";
 import { Field, Textarea } from "@/components/ui/input";
-import { DOCUMENT_KIND, type ApplicationStatus, type DocumentKind } from "@/lib/labels";
+import type { ApplicationStatus } from "@/lib/labels";
 import { reopenApplication, reviewApplication } from "./actions";
 
 /**
@@ -11,15 +11,13 @@ import { reopenApplication, reviewApplication } from "./actions";
  */
 export function ReviewActions({
   application,
-  missingDocuments,
-  missingPayout = false,
+  missingRequirements,
   size = "sm",
   layout = "row",
 }: {
   application: { id: string; full_name: string; status: ApplicationStatus; user_id: string | null };
-  missingDocuments: DocumentKind[];
-  /** El aspirante no ha elegido cómo recibir sus pagos. */
-  missingPayout?: boolean;
+  /** Requisitos pendientes (de los 6), por nombre. */
+  missingRequirements: string[];
   size?: "sm" | "md";
   layout?: "row" | "stack";
 }) {
@@ -74,12 +72,10 @@ export function ReviewActions({
         disabled={!canApprove}
         disabledReason="El aspirante aún no se registra en la app"
       >
-        {(missingDocuments.length > 0 || missingPayout) && (
+        {missingRequirements.length > 0 && (
           <Alert tone="warning">
-            {missingPayout && "El aspirante no ha elegido su medio de pago. "}
-            {missingDocuments.length > 0 &&
-              `Faltan documentos requeridos: ${missingDocuments.map((kind) => DOCUMENT_KIND[kind]).join(", ")}. `}
-            Puedes aprobar igualmente, pero deja constancia en la justificación.
+            Faltan requisitos: {missingRequirements.join(", ")}. Puedes aprobar igualmente, pero deja constancia en la
+            justificación.
           </Alert>
         )}
         <Field label="Justificación" htmlFor={`approve-notes-${application.id}`} hint="Obligatoria. El aspirante la verá en la app.">

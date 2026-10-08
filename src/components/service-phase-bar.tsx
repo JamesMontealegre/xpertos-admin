@@ -74,9 +74,19 @@ export function ServicePhaseBar({
                   )}
                 />
               )}
+              {(state === "current" || state === "paused") && (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "step-pulse absolute top-0 left-1/2 z-0 -ml-4 size-8 rounded-full",
+                    state === "current" ? "bg-primary" : "bg-amber-500",
+                  )}
+                />
+              )}
               <span
                 className={cn(
                   "relative z-10 flex size-8 items-center justify-center rounded-full text-sm font-semibold",
+                  (state === "current" || state === "paused") && "step-beat",
                   state === "done" && "bg-primary text-white",
                   state === "current" && "bg-primary text-white ring-4 ring-primary/20",
                   state === "paused" && "bg-amber-500 text-white ring-4 ring-amber-200",
