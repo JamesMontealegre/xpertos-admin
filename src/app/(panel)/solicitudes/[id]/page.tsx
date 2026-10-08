@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { formatDateTime } from "@/lib/format";
-import { APPLICATION_STATUS, DOCUMENT_KIND } from "@/lib/labels";
+import { APPLICATION_STATUS, DOCUMENT_KIND, REQUIRED_DOCUMENTS, missingRequiredDocuments } from "@/lib/labels";
 import { signedUrl } from "@/lib/storage";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { FilePreview } from "@/components/ui/file-preview";
 import { reviewApplication } from "../actions";
+import { ReviewActions } from "../review-actions";
 
 export const metadata: Metadata = { title: "Detalle de solicitud" };
 
@@ -46,9 +47,9 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
     })),
   );
 
+  const missingDocuments = missingRequiredDocuments((documents ?? []).map((d) => d.kind));
   const status = APPLICATION_STATUS[application.status];
   const isFinal = application.status === "approved";
-  const canApprove = Boolean(application.user_id);
 
   return (
     <>
@@ -123,7 +124,21 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
               title="Documentos"
               description="Los enlaces están firmados y expiran a los 60 segundos; recarga la página si vencen."
             />
-            <CardBody>
+            <CardBody className="space-y-4">
+              {missingDocuments.length > 0 ? (
+                <Alert tone="warning">
+                  <p className="font-medium">
+                    Faltan por cargar {missingDocuments.length} de {REQUIRED_DOCUMENTS.length} documentos obligatorios:
+                  </p>
+                  <ul className="mt-1 list-inside list-disc">
+                    {missingDocuments.map((kind) => (
+                      <li key={kind}>{DOCUMENT_KIND[kind]}</li>
+                    ))}
+                  </ul>
+                </Alert>
+              ) : (
+                <Alert tone="success">Los {REQUIRED_DOCUMENTS.length} documentos obligatorios están cargados.</Alert>
+              )}
               {docsWithUrls.length === 0 ? (
                 <p className="text-sm text-slate-500">
                   El aspirante aún no ha subido documentos
@@ -168,47 +183,54 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
                   )}
                 </div>
               ) : (
-                <ActionForm action={reviewApplication} className="space-y-4">
-                  <input type="hidden" name="application_id" value={application.id} />
-                  <Field
-                    label="Notas del operador"
-                    htmlFor="notes"
-                    hint="Obligatorias al pedir información o rechazar."
-                  >
-                    <Textarea
-                      id="notes"
-                      name="notes"
-                      defaultValue={application.admin_notes ?? ""}
-                      placeholder="Ej.: falta el RUT actualizado y el certificado de antecedentes."
-                    />
-                  </Field>
-
-                  <div className="grid gap-2">
-                    <SubmitButton name="status" value="in_review" variant="secondary" disabled={application.status === "in_review"}>
-                      Marcar en revisión
-                    </SubmitButton>
-                    <SubmitButton name="status" value="needs_info" variant="secondary">
-                      Pedir más información
-                    </SubmitButton>
-                    <SubmitButton name="status" value="rejected" variant="danger" disabled={application.status === "rejected"}>
-                      Rechazar
-                    </SubmitButton>
-                    <SubmitButton
-                      name="status"
-                      value="approved"
-                      disabled={!canApprove}
-                      title={!canApprove ? "El aspirante aún no se registra en la app" : undefined}
-                    >
-                      Aprobar
-                    </SubmitButton>
-                    {!canApprove && (
+                <div className="space-y-5">
+                  {application.admin_notes && (
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        {application.status === "rejected" ? "Justificación del rechazo" : "Notas del operador"}
+                      </p>
+                      <p className="mt-1 whitespace-pre-line text-sm">{application.admin_notes}</p>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-slate-700">Decisión</p>
+                    <ReviewActions application={application} missingDocuments={missingDocuments} size="md" layout="stack" />
+                    {!application.user_id && (
                       <p className="text-xs text-slate-500">
                         No es posible aprobar: el aspirante aún no se registra en la app. Al registrarse con el correo{" "}
                         <span className="font-medium">{application.email}</span>, la postulación se enlazará automáticamente.
                       </p>
                     )}
                   </div>
-                </ActionForm>
+                  <ActionForm action={reviewApplication} className="space-y-4 border-t border-border pt-4">
+                    <input type="hidden" name="application_id" value={application.id} />
+                    <Field
+                      label="Seguimiento"
+                      htmlFor="notes"
+                      hint="Para pedir información, escribe qué le falta al aspirante; lo verá en la app."
+                    >
+                      <Textarea
+                        id="notes"
+                        name="notes"
+                        defaultValue={
+                          missingDocuments.length > 0 && application.status !== "needs_info"
+                            ? `Por favor carga: ${missingDocuments.map((kind) => DOCUMENT_KIND[kind]).join(", ")}.`
+                            : ""
+                        }
+                        placeholder="Ej.: falta el RUT actualizado y el certificado de antecedentes."
+                      />
+                    </Field>
+
+                    <div className="grid gap-2">
+                      <SubmitButton name="status" value="in_review" variant="secondary" disabled={application.status === "in_review"}>
+                        Marcar en revisión
+                      </SubmitButton>
+                      <SubmitButton name="status" value="needs_info" variant="secondary">
+                        Pedir más información
+                      </SubmitButton>
+                    </div>
+                  </ActionForm>
+                </div>
               )}
             </CardBody>
           </Card>

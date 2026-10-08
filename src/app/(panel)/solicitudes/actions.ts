@@ -18,8 +18,11 @@ export async function reviewApplication(_prev: ActionResult, formData: FormData)
   if (status === "needs_info" && !notes) {
     return { ok: false, message: "Escribe en las notas qué información falta para el aspirante." };
   }
-  if (status === "rejected" && !notes) {
-    return { ok: false, message: "Indica en las notas el motivo del rechazo." };
+  if (status === "rejected" && notes.length < 10) {
+    return { ok: false, message: "Escribe la justificación del rechazo (mínimo 10 caracteres)." };
+  }
+  if (status === "approved" && notes.length < 10) {
+    return { ok: false, message: "Escribe la justificación de la aprobación (mínimo 10 caracteres)." };
   }
 
   const supabase = await createClient();

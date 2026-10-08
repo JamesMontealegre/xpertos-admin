@@ -2,18 +2,27 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
-import { APPLICATION_STATUS, APPLICATION_STATUS_ORDER, type ApplicationStatus } from "@/lib/labels";
+import {
+  APPLICATION_STATUS,
+  APPLICATION_STATUS_ORDER,
+  DOCUMENT_KIND,
+  REQUIRED_DOCUMENTS,
+  missingRequiredDocuments,
+  type ApplicationStatus,
+  type DocumentKind,
+} from "@/lib/labels";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyRow, Table, TBody, Td, THead, Tr } from "@/components/ui/table";
 import { StatusTabs } from "@/components/status-tabs";
-import { buttonClasses } from "@/components/ui/button";
+import { buttonClasses, LinkButton } from "@/components/ui/button";
+import { ReviewActions } from "./review-actions";
 
 export const metadata: Metadata = { title: "Solicitudes" };
 
-const COLUMNS = ["Nombre", "Email", "Ciudad", "Categorías", "Experiencia", "Estado", "Fecha", "Registro en app"];
+const COLUMNS = ["Nombre", "Ciudad", "Categorías", "Experiencia", "Documentos", "Estado", "Fecha", "Acciones"];
 
 export default async function ApplicationsPage(props: PageProps<"/solicitudes">) {
   const searchParams = await props.searchParams;
@@ -39,6 +48,15 @@ export default async function ApplicationsPage(props: PageProps<"/solicitudes">)
     supabase.from("service_categories").select("id, name"),
     supabase.from("expert_applications").select("status"),
   ]);
+
+  const ids = (applications ?? []).map((a) => a.id);
+  const { data: documents } = ids.length
+    ? await supabase.from("application_documents").select("application_id, kind").in("application_id", ids)
+    : { data: [] as { application_id: string; kind: DocumentKind }[] };
+  const kindsByApplication = new Map<string, DocumentKind[]>();
+  for (const doc of documents ?? []) {
+    kindsByApplication.set(doc.application_id, [...(kindsByApplication.get(doc.application_id) ?? []), doc.kind]);
+  }
 
   const categoryName = new Map((categories ?? []).map((c) => [c.id, c.name]));
   const countByStatus = (counts ?? []).reduce<Record<string, number>>((acc, row) => {
@@ -86,37 +104,53 @@ export default async function ApplicationsPage(props: PageProps<"/solicitudes">)
                 {q || status ? "No hay solicitudes que coincidan con el filtro." : "Aún no hay postulaciones."}
               </EmptyRow>
             )}
-            {(applications ?? []).map((a) => (
-              <Tr key={a.id}>
-                <Td>
-                  <Link href={`/solicitudes/${a.id}`} className="font-medium text-primary hover:underline">
-                    {a.full_name}
-                  </Link>
-                </Td>
-                <Td className="text-slate-600">{a.email}</Td>
-                <Td>{a.city ?? "—"}</Td>
-                <Td>
-                  <div className="flex max-w-xs flex-wrap gap-1">
-                    {a.category_ids.length === 0 && <span className="text-slate-400">—</span>}
-                    {a.category_ids.map((id) => (
-                      <Badge key={id}>{categoryName.get(id) ?? "Categoría"}</Badge>
-                    ))}
-                  </div>
-                </Td>
-                <Td>{a.experience_years != null ? `${a.experience_years} años` : "—"}</Td>
-                <Td>
-                  <Badge tone={APPLICATION_STATUS[a.status].tone}>{APPLICATION_STATUS[a.status].label}</Badge>
-                </Td>
-                <Td className="whitespace-nowrap text-slate-600">{formatDate(a.created_at)}</Td>
-                <Td>
-                  {a.user_id ? (
-                    <Badge tone="green">Registrado</Badge>
-                  ) : (
-                    <Badge tone="slate">Sin registrar</Badge>
-                  )}
-                </Td>
-              </Tr>
-            ))}
+            {(applications ?? []).map((a) => {
+              const missing = missingRequiredDocuments(kindsByApplication.get(a.id) ?? []);
+              const uploaded = REQUIRED_DOCUMENTS.length - missing.length;
+              return (
+                <Tr key={a.id}>
+                  <Td>
+                    <Link href={`/solicitudes/${a.id}`} className="font-medium text-primary hover:underline">
+                      {a.full_name}
+                    </Link>
+                    <p className="text-xs text-slate-500">{a.email}</p>
+                    {!a.user_id && <p className="text-xs text-slate-400">Sin registro en la app</p>}
+                  </Td>
+                  <Td>{a.city ?? "—"}</Td>
+                  <Td>
+                    <div className="flex max-w-xs flex-wrap gap-1">
+                      {a.category_ids.length === 0 && <span className="text-slate-400">—</span>}
+                      {a.category_ids.map((id) => (
+                        <Badge key={id}>{categoryName.get(id) ?? "Categoría"}</Badge>
+                      ))}
+                    </div>
+                  </Td>
+                  <Td className="whitespace-nowrap">{a.experience_years != null ? `${a.experience_years} años` : "—"}</Td>
+                  <Td>
+                    <Badge tone={missing.length === 0 ? "green" : uploaded === 0 ? "slate" : "amber"}>
+                      {uploaded}/{REQUIRED_DOCUMENTS.length} obligatorios
+                    </Badge>
+                    {missing.length > 0 && (
+                      <p className="mt-1 max-w-[14rem] text-xs text-slate-500">
+                        Faltan: {missing.map((kind) => DOCUMENT_KIND[kind]).join(", ")}
+                      </p>
+                    )}
+                  </Td>
+                  <Td>
+                    <Badge tone={APPLICATION_STATUS[a.status].tone}>{APPLICATION_STATUS[a.status].label}</Badge>
+                  </Td>
+                  <Td className="whitespace-nowrap text-slate-600">{formatDate(a.created_at)}</Td>
+                  <Td>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <LinkButton href={`/solicitudes/${a.id}`} size="sm">
+                        Ver detalle
+                      </LinkButton>
+                      <ReviewActions application={a} missingDocuments={missing} />
+                    </div>
+                  </Td>
+                </Tr>
+              );
+            })}
           </TBody>
         </Table>
       </Card>

@@ -77,12 +77,22 @@ export const DOCUMENT_KIND: Record<DocumentKind, string> = {
   id_front: "Cédula (frente)",
   id_back: "Cédula (reverso)",
   rut: "RUT",
-  certificate: "Certificado",
-  portfolio: "Portafolio",
-  background_check: "Antecedentes",
-  social_security: "Seguridad social",
+  certificate: "Certificado o diploma",
+  portfolio: "Portafolio de trabajos",
+  background_check: "Certificado de antecedentes",
+  social_security: "Planilla de seguridad social",
   other: "Otro",
 };
+
+/**
+ * Documentos obligatorios de una postulación. Coinciden con los tipos de una sola carga de la app
+ * de usuarios; certificados, portafolio y "otro" son opcionales y repetibles.
+ */
+export const REQUIRED_DOCUMENTS: DocumentKind[] = ["id_front", "id_back", "rut", "background_check", "social_security"];
+
+export function missingRequiredDocuments(uploaded: DocumentKind[]): DocumentKind[] {
+  return REQUIRED_DOCUMENTS.filter((kind) => !uploaded.includes(kind));
+}
 
 export const PAYMENT_METHOD: Record<PaymentMethod, string> = {
   transfer: "Transferencia",
