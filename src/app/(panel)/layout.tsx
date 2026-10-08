@@ -34,7 +34,7 @@ export default async function PanelLayout({ children }: LayoutProps<"/">) {
           </form>
         </header>
         <main className="flex-1 px-4 py-6 sm:px-8 sm:py-8">
-          <div className="mx-auto max-w-6xl">{children}</div>
+          <div className="mx-auto max-w-screen-2xl">{children}</div>
         </main>
       </div>
     </div>

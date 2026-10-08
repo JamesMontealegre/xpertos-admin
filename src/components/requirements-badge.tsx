@@ -11,7 +11,7 @@ const PANEL_WIDTH = 288;
  * posición fija para no quedar recortado por el scroll horizontal de la tabla, y sigue al botón
  * si la página se desplaza. Se cierra con clic afuera o Escape.
  */
-export function RequirementsBadge({ requirements }: { requirements: Requirement[] }) {
+export function RequirementsBadge({ requirements, compact = false }: { requirements: Requirement[]; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -71,10 +71,12 @@ export function RequirementsBadge({ requirements }: { requirements: Requirement[
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="dialog"
+        aria-label={`${done} de ${total} requisitos cumplidos. Ver detalle`}
         className="inline-flex items-center gap-1 rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
         <Badge tone={tone}>
-          {done}/{total} requeridos
+          {done}/{total}
+          {compact ? null : " requeridos"}
           <svg viewBox="0 0 20 20" fill="currentColor" className={`ml-0.5 size-3.5 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden>
             <path fillRule="evenodd" d="M5.2 7.2a.75.75 0 0 1 1.06 0L10 10.94l3.74-3.74a.75.75 0 1 1 1.06 1.06l-4.27 4.27a.75.75 0 0 1-1.06 0L5.2 8.26a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
           </svg>
