@@ -10,6 +10,7 @@ const ITEMS = [
   { href: "/servicios", label: "Servicios" },
   { href: "/expertos", label: "Expertos" },
   { href: "/configuracion/cuentas", label: "Cuentas de recaudo" },
+  { href: "/configuracion/correos", label: "Correos" },
 ] as const;
 
 export function SidebarNav() {

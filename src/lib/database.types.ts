@@ -44,6 +44,7 @@ export type Database = {
           mime_type: string | null
           storage_path: string
         }
+        ComputedFields: never
         Insert: {
           application_id: string
           created_at?: string
@@ -85,6 +86,7 @@ export type Database = {
           signer_role: Database["public"]["Enums"]["user_role"]
           user_agent: string | null
         }
+        ComputedFields: never
         Insert: {
           accepted_terms?: boolean
           body_hash: string
@@ -138,6 +140,7 @@ export type Database = {
           updated_at: string
           version: number
         }
+        ComputedFields: never
         Insert: {
           body_hash: string
           body_md: string
@@ -184,6 +187,105 @@ export type Database = {
           },
         ]
       }
+      email_outbox: {
+        Row: {
+          application_id: string | null
+          attempts: number
+          audience: string
+          created_at: string
+          data: NonNullable<Json>
+          dedupe_key: string | null
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          next_attempt_at: string
+          provider: string | null
+          provider_id: string | null
+          recipient_id: string | null
+          sent_at: string | null
+          service_id: string | null
+          status: Database["public"]["Enums"]["email_status"]
+          subject: string | null
+          template: string
+          to_email: string
+          to_name: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          application_id?: string | null
+          attempts?: number
+          audience: string
+          created_at?: string
+          data?: NonNullable<Json>
+          dedupe_key?: string | null
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          next_attempt_at?: string
+          provider?: string | null
+          provider_id?: string | null
+          recipient_id?: string | null
+          sent_at?: string | null
+          service_id?: string | null
+          status?: Database["public"]["Enums"]["email_status"]
+          subject?: string | null
+          template: string
+          to_email: string
+          to_name?: string | null
+        }
+        Update: {
+          application_id?: string | null
+          attempts?: number
+          audience?: string
+          created_at?: string
+          data?: NonNullable<Json>
+          dedupe_key?: string | null
+          id?: string
+          last_error?: string | null
+          locked_at?: string | null
+          next_attempt_at?: string
+          provider?: string | null
+          provider_id?: string | null
+          recipient_id?: string | null
+          sent_at?: string | null
+          service_id?: string | null
+          status?: Database["public"]["Enums"]["email_status"]
+          subject?: string | null
+          template?: string
+          to_email?: string
+          to_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_outbox_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "expert_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_outbox_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_outbox_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "email_outbox_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expert_applications: {
         Row: {
           admin_notes: string | null
@@ -204,6 +306,7 @@ export type Database = {
           updated_at: string
           user_id: string | null
         }
+        ComputedFields: never
         Insert: {
           admin_notes?: string | null
           bio?: string | null
@@ -267,6 +370,7 @@ export type Database = {
           start_time: string
           weekday: number
         }
+        ComputedFields: never
         Insert: {
           end_time: string
           expert_id: string
@@ -304,6 +408,7 @@ export type Database = {
           reference: string | null
           service_id: string
         }
+        ComputedFields: never
         Insert: {
           account?: string | null
           amount: number
@@ -373,6 +478,7 @@ export type Database = {
           updated_at: string
           user_id: string
         }
+        ComputedFields: never
         Insert: {
           approved_at?: string
           approved_by?: string | null
@@ -421,6 +527,7 @@ export type Database = {
           day: string
           name: string
         }
+        ComputedFields: never
         Insert: {
           day: string
           name: string
@@ -443,6 +550,7 @@ export type Database = {
           id: string
           sort_order: number
         }
+        ComputedFields: never
         Insert: {
           account_number: string
           account_type: string
@@ -483,6 +591,7 @@ export type Database = {
           verified_at: string | null
           verified_by: string | null
         }
+        ComputedFields: never
         Insert: {
           amount: number
           client_id: string
@@ -563,6 +672,7 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           avatar_url?: string | null
           city?: string | null
@@ -600,11 +710,12 @@ export type Database = {
           unit: string
           unit_price: number
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           description: string
           id?: string
-          line_total?: number | null
+          line_total?: never
           measurement?: string | null
           position?: number
           quantity?: number
@@ -616,7 +727,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
-          line_total?: number | null
+          line_total?: never
           measurement?: string | null
           position?: number
           quantity?: number
@@ -646,6 +757,7 @@ export type Database = {
           quote_id: string
           unit: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           estimated_cost?: number | null
@@ -688,6 +800,7 @@ export type Database = {
           slug: string
           sort_order: number
         }
+        ComputedFields: never
         Insert: {
           active?: boolean
           description?: string | null
@@ -714,17 +827,18 @@ export type Database = {
           created_at: string
           from_status: Database["public"]["Enums"]["service_status"] | null
           id: string
-          payload: Json
+          payload: NonNullable<Json>
           service_id: string
           to_status: Database["public"]["Enums"]["service_status"] | null
           type: string
         }
+        ComputedFields: never
         Insert: {
           actor_id?: string | null
           created_at?: string
           from_status?: Database["public"]["Enums"]["service_status"] | null
           id?: string
-          payload?: Json
+          payload?: NonNullable<Json>
           service_id: string
           to_status?: Database["public"]["Enums"]["service_status"] | null
           type: string
@@ -734,7 +848,7 @@ export type Database = {
           created_at?: string
           from_status?: Database["public"]["Enums"]["service_status"] | null
           id?: string
-          payload?: Json
+          payload?: NonNullable<Json>
           service_id?: string
           to_status?: Database["public"]["Enums"]["service_status"] | null
           type?: string
@@ -772,6 +886,7 @@ export type Database = {
           storage_path: string
           uploaded_by: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           id?: string
@@ -832,6 +947,7 @@ export type Database = {
           total: number | null
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           admin_notes?: string | null
           approved_labor_total?: number | null
@@ -911,6 +1027,7 @@ export type Database = {
           service_id: string
           target_id: string
         }
+        ComputedFields: never
         Insert: {
           author_id: string
           comment?: string | null
@@ -973,6 +1090,7 @@ export type Database = {
           status: Database["public"]["Enums"]["stage_status"]
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           amount: number
           created_at?: string
@@ -1019,7 +1137,7 @@ export type Database = {
           address: string | null
           assigned_at: string | null
           assigned_by: string | null
-          availability: Json
+          availability: NonNullable<Json>
           cancel_reason: string | null
           category_id: string
           city: string | null
@@ -1044,11 +1162,12 @@ export type Database = {
           title: string
           updated_at: string
         }
+        ComputedFields: never
         Insert: {
           address?: string | null
           assigned_at?: string | null
           assigned_by?: string | null
-          availability?: Json
+          availability?: NonNullable<Json>
           cancel_reason?: string | null
           category_id: string
           city?: string | null
@@ -1077,7 +1196,7 @@ export type Database = {
           address?: string | null
           assigned_at?: string | null
           assigned_by?: string | null
-          availability?: Json
+          availability?: NonNullable<Json>
           cancel_reason?: string | null
           category_id?: string
           city?: string | null
@@ -1140,6 +1259,7 @@ export type Database = {
           log_id: string
           storage_path: string
         }
+        ComputedFields: never
         Insert: {
           created_at?: string
           id?: string
@@ -1174,6 +1294,7 @@ export type Database = {
           updated_at: string
           work_date: string
         }
+        ComputedFields: never
         Insert: {
           check_in?: string | null
           check_out?: string | null
@@ -1238,6 +1359,7 @@ export type Database = {
           start_offset_days: number | null
           status: Database["public"]["Enums"]["service_status"] | null
         }
+        ComputedFields: never
         Relationships: []
       }
     }
@@ -1262,11 +1384,53 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _emails_enabled: { Args: Record<PropertyKey, never>; Returns: boolean }
+      _enqueue_admin_email: {
+        Args: {
+          p_application: string
+          p_data: Json
+          p_dedupe: string
+          p_service: string
+          p_template: string
+        }
+        Returns: undefined
+      }
+      _enqueue_email: {
+        Args: {
+          p_application: string
+          p_audience: string
+          p_data: Json
+          p_dedupe: string
+          p_email: string
+          p_name: string
+          p_recipient: string
+          p_service: string
+          p_template: string
+        }
+        Returns: undefined
+      }
+      _enqueue_profile_email: {
+        Args: {
+          p_application: string
+          p_audience: string
+          p_data: Json
+          p_dedupe: string
+          p_profile: string
+          p_service: string
+          p_template: string
+        }
+        Returns: undefined
+      }
+      _payment_accounts_json: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      _service_email_data: { Args: { p_service: string }; Returns: Json }
       add_business_days: {
         Args: { p_days: number; p_from: string }
         Returns: string
       }
-      admin_dashboard: { Args: never; Returns: Json }
+      admin_dashboard: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_move_service: {
         Args: {
           p_reason?: string
@@ -1277,7 +1441,7 @@ export type Database = {
           address: string | null
           assigned_at: string | null
           assigned_by: string | null
-          availability: Json
+          availability: NonNullable<Json>
           cancel_reason: string | null
           category_id: string
           city: string | null
@@ -1380,7 +1544,7 @@ export type Database = {
           address: string | null
           assigned_at: string | null
           assigned_by: string | null
-          availability: Json
+          availability: NonNullable<Json>
           cancel_reason: string | null
           category_id: string
           city: string | null
@@ -1421,13 +1585,44 @@ export type Database = {
         Args: { p_service_id: string; p_work_date: string }
         Returns: boolean
       }
+      claim_email_outbox: {
+        Args: { p_limit?: number }
+        Returns: {
+          application_id: string | null
+          attempts: number
+          audience: string
+          created_at: string
+          data: NonNullable<Json>
+          dedupe_key: string | null
+          id: string
+          last_error: string | null
+          locked_at: string | null
+          next_attempt_at: string
+          provider: string | null
+          provider_id: string | null
+          recipient_id: string | null
+          sent_at: string | null
+          service_id: string | null
+          status: Database["public"]["Enums"]["email_status"]
+          subject: string | null
+          template: string
+          to_email: string
+          to_name: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "email_outbox"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       close_work: {
         Args: { p_notes?: string; p_service_id: string }
         Returns: {
           address: string | null
           assigned_at: string | null
           assigned_by: string | null
-          availability: Json
+          availability: NonNullable<Json>
           cancel_reason: string | null
           category_id: string
           city: string | null
@@ -1460,9 +1655,17 @@ export type Database = {
         }
       }
       close_work_missing: { Args: { p_service_id: string }; Returns: string[] }
+      configure_email_dispatch: {
+        Args: { p_key: string; p_url: string }
+        Returns: undefined
+      }
       current_role: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      dispatch_email_outbox: {
+        Args: { p_only_if_due?: boolean }
+        Returns: number
       }
       expert_can_choose_frequency: {
         Args: { p_expert_id: string }
@@ -1496,7 +1699,7 @@ export type Database = {
       }
       has_expert_application: { Args: { p_user_id: string }; Returns: boolean }
       has_services_as_client: { Args: { p_user_id: string }; Returns: boolean }
-      is_admin: { Args: never; Returns: boolean }
+      is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_business_day: { Args: { p_day: string }; Returns: boolean }
       is_service_party: { Args: { p_service_id: string }; Returns: boolean }
       open_next_stage: { Args: { p_service_id: string }; Returns: undefined }
@@ -1508,6 +1711,7 @@ export type Database = {
         Args: { p: Database["public"]["Enums"]["payout_method"] }
         Returns: string
       }
+      retry_email: { Args: { p_id: string }; Returns: undefined }
       return_quote: {
         Args: { p_notes: string; p_service_id: string }
         Returns: {
@@ -1577,7 +1781,7 @@ export type Database = {
           address: string | null
           assigned_at: string | null
           assigned_by: string | null
-          availability: Json
+          availability: NonNullable<Json>
           cancel_reason: string | null
           category_id: string
           city: string | null
@@ -1636,7 +1840,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      start_due_services: { Args: never; Returns: number }
+      start_due_services: { Args: Record<PropertyKey, never>; Returns: number }
       start_offset_days: {
         Args: { p: Database["public"]["Enums"]["pricing_mode"] }
         Returns: number
@@ -1669,7 +1873,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      today_co: { Args: never; Returns: string }
+      today_co: { Args: Record<PropertyKey, never>; Returns: string }
       try_uuid: { Args: { p: string }; Returns: string }
     }
     Enums: {
@@ -1692,6 +1896,7 @@ export type Database = {
         | "photo"
         | "recommendation_letter"
         | "bank_certificate"
+      email_status: "pending" | "sending" | "sent" | "failed"
       payment_method: "transfer" | "cash" | "mercado_pago" | "tucompra"
       payment_status: "submitted" | "verified" | "rejected"
       payout_frequency:
@@ -1872,6 +2077,7 @@ export const Constants = {
         "recommendation_letter",
         "bank_certificate",
       ],
+      email_status: ["pending", "sending", "sent", "failed"],
       payment_method: ["transfer", "cash", "mercado_pago", "tucompra"],
       payment_status: ["submitted", "verified", "rejected"],
       payout_frequency: [
@@ -1907,4 +2113,3 @@ export const Constants = {
     },
   },
 } as const
-

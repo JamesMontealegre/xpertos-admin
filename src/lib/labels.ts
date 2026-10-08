@@ -245,3 +245,39 @@ export const EVENT_TYPE: Record<string, string> = {
 export function eventLabel(type: string) {
   return EVENT_TYPE[type] ?? type;
 }
+
+/** Correos de notificación (tabla email_outbox). */
+export const EMAIL_TEMPLATE_LABEL: Record<string, string> = {
+  service_requested: "Solicitud recibida",
+  service_assigned: "Experto asignado",
+  quote_submitted: "Cotización por revisar",
+  quote_returned: "Cotización devuelta",
+  quote_approved: "Cotización aprobada",
+  payment_submitted: "Comprobante de pago",
+  payment_verified: "Pago confirmado",
+  payment_rejected: "Pago rechazado",
+  service_scheduled: "Servicio programado",
+  service_started: "Inicio de obra",
+  service_paused: "Servicio en pausa",
+  service_resumed: "Servicio reanudado",
+  work_closed: "Trabajo cerrado",
+  work_reopened: "Ajustes pendientes",
+  service_completed: "Servicio finalizado",
+  service_cancelled: "Servicio cancelado",
+  payout_sent: "Pago al experto",
+  application_received: "Postulación recibida",
+  application_approved: "Postulación aprobada",
+  application_rejected: "Postulación rechazada",
+  application_needs_info: "Postulación: falta información",
+  application_reopened: "Postulación reabierta",
+};
+
+export const EMAIL_AUDIENCE_LABEL: Record<string, string> = {
+  client: "Cliente",
+  expert: "Experto",
+  admin: "Equipo",
+  applicant: "Aspirante",
+};
+
+/** Intentos de envío antes de dejar un correo como fallido definitivo (igual que en la base). */
+export const EMAIL_MAX_ATTEMPTS = 5;
