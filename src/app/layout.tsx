@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Mulish } from "next/font/google";
 import { Suspense } from "react";
 import { NavigationLoader } from "@/components/navigation-loader";
+import { VersionWatcher } from "@/components/version-watcher";
 import "./globals.css";
 
 // Mulish como fuente variable (pesos 400–900 en un solo archivo).
@@ -32,6 +33,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Loader entre páginas: la X de Xpertos mientras carga la siguiente vista. */}
         <Suspense fallback={null}>
           <NavigationLoader />
+        </Suspense>
+        {/* Recarga sola cuando se publica una versión nueva (sin perder lo que se esté escribiendo). */}
+        <Suspense fallback={null}>
+          <VersionWatcher />
         </Suspense>
       </body>
     </html>

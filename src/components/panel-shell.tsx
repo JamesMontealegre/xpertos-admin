@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { logout } from "@/app/login/actions";
+import { APP_VERSION } from "@/lib/version";
 import { CloseIcon, CollapseIcon, ExpandIcon, LogoutIcon, MenuIcon } from "@/components/icons";
 import { LiveUpdates } from "@/components/live-updates";
 import { Logo } from "@/components/logo";
@@ -157,7 +158,12 @@ export function PanelShell({
             </span>
             <RoleBadge superAdmin={operator.is_super_admin} />
           </p>
-          <LogoutButton />
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-400" title="Versión del panel">
+              v{APP_VERSION}
+            </span>
+            <LogoutButton />
+          </div>
         </header>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -206,7 +212,10 @@ export function PanelShell({
               <span className="truncate font-medium text-foreground">{name}</span>
               <RoleBadge superAdmin={operator.is_super_admin} />
             </p>
-            <LogoutButton />
+            <div className="flex items-center justify-between gap-2">
+              <LogoutButton />
+              <span className="text-xs text-slate-400">v{APP_VERSION}</span>
+            </div>
           </div>
         </div>
       </div>
