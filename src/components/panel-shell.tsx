@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { logout } from "@/app/login/actions";
 import { CloseIcon, CollapseIcon, ExpandIcon, LogoutIcon, MenuIcon } from "@/components/icons";
+import { LiveUpdates } from "@/components/live-updates";
 import { Logo } from "@/components/logo";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { buttonClasses } from "@/components/ui/button";
@@ -163,6 +164,9 @@ export function PanelShell({
           <div className="mx-auto max-w-screen-2xl">{children}</div>
         </main>
       </div>
+
+      {/* Postulaciones nuevas en tiempo real y actualización de las solicitudes sin interrumpir. */}
+      <LiveUpdates />
 
       {/* Menú como panel lateral en celular y tableta */}
       <div className={cn("fixed inset-0 z-40 lg:hidden", drawerOpen ? "visible" : "invisible")} aria-hidden={!drawerOpen}>

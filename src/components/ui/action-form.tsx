@@ -22,7 +22,7 @@ export function ActionForm({
   onSuccess?: () => void;
   showSuccess?: boolean;
 }) {
-  const [state, formAction] = useActionState(action, null);
+  const [state, formAction, pending] = useActionState(action, null);
 
   useEffect(() => {
     if (state?.ok) onSuccess?.();
@@ -30,7 +30,8 @@ export function ActionForm({
   }, [state]);
 
   return (
-    <form action={formAction} className={cn("space-y-3", className)}>
+    // aria-busy: la actualización automática del panel espera a que termine la acción.
+    <form action={formAction} className={cn("space-y-3", className)} aria-busy={pending || undefined}>
       {children}
       {state && !state.ok && <Alert tone="error">{state.message}</Alert>}
       {showSuccess && state?.ok && state.message && <Alert tone="success">{state.message}</Alert>}
