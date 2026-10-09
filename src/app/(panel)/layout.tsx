@@ -36,7 +36,7 @@ export default async function PanelLayout({ children }: LayoutProps<"/">) {
               {profile.is_super_admin ? "Superadmin" : "Agente"}
             </span>
           </p>
-          <form action={logout}>
+          <form action={logout} data-navigates>
             <button type="submit" className={buttonClasses("ghost", "sm")}>
               Cerrar sesión
             </button>
