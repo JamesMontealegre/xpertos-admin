@@ -7,8 +7,9 @@ import { formatCOP } from "@/lib/format";
 import { approveQuote } from "../actions";
 
 /**
- * Evaluación de la cotización: mano de obra aprobada, valor de los materiales y comisión, con las dos
- * opciones que verá el cliente calculadas en vivo. Al presentarla, el cliente elige en su app entre solo
+ * Evaluación de la cotización: mano de obra aprobada y valor de los materiales, con las dos opciones que
+ * verá el cliente calculadas en vivo. Las comisiones por uso de la plataforma son fijas por servicio: la
+ * tarifa del cliente se suma a cada opción y la comisión del experto se descuenta de su pago. Al presentarla, el cliente elige en su app entre solo
  * mano de obra (él compra los materiales) y todo incluido. Sin materiales hay una sola opción.
  */
 export function QuoteReviewForm({
@@ -16,24 +17,27 @@ export function QuoteReviewForm({
   hasMaterials,
   laborTotal,
   commissionPct,
+  clientFeePct,
   materialsEstimate,
 }: {
   serviceId: string;
   /** El experto listó materiales: hay opción todo incluido y su valor es obligatorio. */
   hasMaterials: boolean;
   laborTotal: number;
+  /** Comisión del experto (% de su cotización), se descuenta de su pago. */
   commissionPct: number;
+  /** Tarifa de servicio del cliente (% de la cotización), se suma a lo que paga. */
+  clientFeePct: number;
   /** Suma de los costos estimados que dio el experto para los materiales (si los dio). */
   materialsEstimate: number | null;
 }) {
   const [labor, setLabor] = useState(laborTotal ? String(Math.round(laborTotal)) : "");
   const [materials, setMaterials] = useState(hasMaterials && materialsEstimate ? String(Math.round(materialsEstimate)) : "");
-  const [commission, setCommission] = useState(String(commissionPct));
 
   const laborValue = Number(labor) || 0;
   const materialsValue = hasMaterials ? Number(materials) || 0 : 0;
-  const commissionValue = Math.min(Math.max(Number(commission) || 0, 0), 100);
-  const commissionAmount = Math.round((laborValue * commissionValue) / 100);
+  const commissionAmount = Math.round((laborValue * commissionPct) / 100);
+  const clientFee = Math.round((laborValue * clientFeePct) / 100);
   const expertNet = laborValue - commissionAmount;
   const canApprove = laborValue > 0 && (!hasMaterials || materialsValue > 0);
 
@@ -42,7 +46,7 @@ export function QuoteReviewForm({
       <input type="hidden" name="service_id" value={serviceId} />
       <input type="hidden" name="has_materials" value={hasMaterials ? "1" : "0"} />
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="Mano de obra aprobada (COP)"
           htmlFor="labor_total"
@@ -83,55 +87,69 @@ export function QuoteReviewForm({
             />
           </Field>
         )}
-        <Field label="Comisión de Xpertos (%)" htmlFor="commission_pct" hint="Sobre la mano de obra.">
-          <Input
-            id="commission_pct"
-            name="commission_pct"
-            type="number"
-            min={0}
-            max={100}
-            step={0.5}
-            required
-            value={commission}
-            onChange={(e) => setCommission(e.target.value)}
-          />
-        </Field>
       </div>
 
-      <dl className="grid gap-3 rounded-xl border border-border bg-slate-50 p-4 text-sm sm:grid-cols-2">
+      <dl className="grid gap-3 rounded-xl border border-border bg-slate-50 p-4 text-sm lg:grid-cols-3">
         <div className="space-y-1.5">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            {hasMaterials ? "Opciones que verá el cliente" : "Valor para el cliente"}
+            {hasMaterials ? "Opciones que verá el cliente" : "Lo que paga el cliente"}
           </p>
           <div className="flex justify-between gap-3">
-            <dt className="text-slate-600">Solo mano de obra</dt>
-            <dd className="font-semibold text-primary">{formatCOP(laborValue)}</dd>
+            <dt className="text-slate-600">Mano de obra</dt>
+            <dd>{formatCOP(laborValue)}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-slate-600">Tarifa de servicio ({clientFeePct} %)</dt>
+            <dd>+ {formatCOP(clientFee)}</dd>
+          </div>
+          <div className="flex justify-between gap-3 border-t border-border pt-1.5">
+            <dt className="font-medium">Solo mano de obra</dt>
+            <dd className="font-semibold text-primary">{formatCOP(laborValue + clientFee)}</dd>
           </div>
           {hasMaterials ? (
             <div className="flex justify-between gap-3">
-              <dt className="text-slate-600">Todo incluido (+ materiales)</dt>
-              <dd className="font-semibold text-primary">{formatCOP(laborValue + materialsValue)}</dd>
+              <dt className="font-medium">Todo incluido (+ materiales)</dt>
+              <dd className="font-semibold text-primary">{formatCOP(laborValue + clientFee + materialsValue)}</dd>
             </div>
           ) : (
             <p className="text-xs text-slate-500">El experto no listó materiales: hay una sola opción y se cobra de una vez.</p>
           )}
         </div>
-        <div className="space-y-1.5 sm:border-l sm:border-border sm:pl-4">
+        <div className="space-y-1.5 lg:border-l lg:border-border lg:pl-4">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Para el experto</p>
           <div className="flex justify-between gap-3">
-            <dt className="text-slate-600">Comisión ({commissionValue} %)</dt>
+            <dt className="text-slate-600">Su cotización</dt>
+            <dd>{formatCOP(laborValue)}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-slate-600">Comisión ({commissionPct} %)</dt>
             <dd>− {formatCOP(commissionAmount)}</dd>
           </div>
           <div className="flex justify-between gap-3 border-t border-border pt-1.5 font-semibold">
-            <dt>Neto por la mano de obra</dt>
+            <dt>Recibe al finalizar</dt>
             <dd>{formatCOP(expertNet)}</dd>
           </div>
           {hasMaterials && (
             <p className="text-xs text-slate-500">
-              Los materiales no hacen parte del pago al experto: si el cliente elige todo incluido, Xpertos los compra y
-              los lleva al lugar del servicio.
+              Los materiales no hacen parte de su pago: si el cliente elige todo incluido, Xpertos los compra y los lleva
+              al lugar del servicio.
             </p>
           )}
+        </div>
+        <div className="space-y-1.5 lg:border-l lg:border-border lg:pl-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Ganancia de Xpertos</p>
+          <div className="flex justify-between gap-3">
+            <dt className="text-slate-600">Tarifa del cliente</dt>
+            <dd>{formatCOP(clientFee)}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-slate-600">Comisión del experto</dt>
+            <dd>{formatCOP(commissionAmount)}</dd>
+          </div>
+          <div className="flex justify-between gap-3 border-t border-border pt-1.5 font-semibold">
+            <dt>Total ({clientFeePct + commissionPct} %)</dt>
+            <dd>{formatCOP(clientFee + commissionAmount)}</dd>
+          </div>
         </div>
       </dl>
 

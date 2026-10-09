@@ -381,6 +381,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
           quote={quoteWithLines}
           beforePhotos={beforePhotos}
           commissionPct={commissionPct}
+          clientFeePct={Number(service.client_fee_pct)}
         />
       ),
     });
@@ -463,7 +464,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
               { label: "Ciudad", value: service.city ?? "—" },
               { label: "Dirección", value: service.address ?? "—" },
               { label: "Total aprobado", value: formatCOP(service.estimated_price) },
-              { label: "Comisión", value: `${commissionPct} %` },
+              { label: "Comisiones", value: `Experto ${commissionPct} % · cliente ${Number(service.client_fee_pct)} %` },
               { label: "Fecha de visita", value: formatDateTime(service.scheduled_at) },
               { label: "Asignado", value: formatDateTime(service.assigned_at) },
               { label: "Iniciado", value: formatDateTime(service.started_at) },

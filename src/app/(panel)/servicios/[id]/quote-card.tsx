@@ -38,12 +38,14 @@ export function QuoteCard({
   quote,
   beforePhotos,
   commissionPct,
+  clientFeePct,
 }: {
   serviceId: string;
   status: ServiceStatus;
   quote: QuoteWithLines | null;
   beforePhotos: PhotoItem[];
   commissionPct: number;
+  clientFeePct: number;
 }) {
   if (!quote) {
     return (
@@ -204,6 +206,7 @@ export function QuoteCard({
               hasMaterials={materials.length > 0}
               laborTotal={Number(quote.labor_total)}
               commissionPct={commissionPct}
+              clientFeePct={clientFeePct}
               materialsEstimate={estimatedMaterials}
             />
             <div className="flex flex-wrap items-center justify-end gap-2 text-sm text-slate-500">
@@ -278,10 +281,15 @@ export function QuoteCard({
               columns={3}
               items={[
                 { label: "Mano de obra aprobada", value: formatCOP(quote.approved_labor_total) },
+                { label: `Tarifa de servicio del cliente (${clientFeePct} %)`, value: formatCOP(quote.client_fee_total) },
                 { label: "Materiales", value: allInclusive ? `${formatCOP(quote.materials_total)} · los compra Xpertos` : "Los compra el cliente" },
                 { label: "Total del cliente", value: <span className="font-semibold text-primary">{formatCOP(quote.total)}</span> },
-                { label: "Comisión", value: `${commissionPct} %` },
-                { label: "Neto estimado del experto", value: formatCOP(net) },
+                { label: `Comisión del experto (${commissionPct} %)`, value: formatCOP(net != null ? Number(quote.approved_labor_total) - net : null) },
+                { label: "El experto recibe al finalizar", value: formatCOP(net) },
+                {
+                  label: "Ganancia de Xpertos",
+                  value: formatCOP(net != null ? Number(quote.client_fee_total) + Number(quote.approved_labor_total) - net : null),
+                },
                 { label: "Aprobada", value: formatDateTime(quote.reviewed_at) },
               ]}
             />

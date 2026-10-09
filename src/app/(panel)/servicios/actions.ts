@@ -141,7 +141,6 @@ export async function approveQuote(_prev: ActionResult, formData: FormData): Pro
   const hasMaterials = fieldString(formData, "has_materials") === "1";
   const labor = parseAmount(fieldString(formData, "labor_total"));
   const materials = hasMaterials ? parseAmount(fieldString(formData, "materials_total")) : 0;
-  const commission = Number(fieldString(formData, "commission_pct"));
   const notes = fieldString(formData, "notes");
 
   if (!serviceId) return { ok: false, message: "Servicio no válido." };
@@ -149,37 +148,14 @@ export async function approveQuote(_prev: ActionResult, formData: FormData): Pro
   if (hasMaterials && (!Number.isFinite(materials) || materials <= 0)) {
     return { ok: false, message: "Indica el valor de los materiales para la opción todo incluido." };
   }
-  if (!Number.isFinite(commission) || commission < 0 || commission > 100) {
-    return { ok: false, message: "La comisión debe estar entre 0 y 100 %." };
-  }
-
   const supabase = await createClient();
-  const { data: service, error: readError } = await supabase
-    .from("services")
-    .select("commission_pct")
-    .eq("id", serviceId)
-    .maybeSingle();
-  if (readError) return fail(readError);
-  if (!service) return { ok: false, message: "El servicio no existe." };
-
-  // La comisión se guarda antes de aprobar porque el contrato se genera con ella.
-  const previousCommission = Number(service.commission_pct);
-  const commissionChanged = Math.abs(previousCommission - commission) > 0.001;
-  if (commissionChanged) {
-    const { error } = await supabase.from("services").update({ commission_pct: commission }).eq("id", serviceId);
-    if (error) return fail(error);
-  }
-
   const { error } = await supabase.rpc("approve_quote", {
     p_service_id: serviceId,
     p_labor_total: labor,
     p_materials_total: materials,
     p_notes: notes || undefined,
   });
-  if (error) {
-    if (commissionChanged) await supabase.from("services").update({ commission_pct: previousCommission }).eq("id", serviceId);
-    return fail(error);
-  }
+  if (error) return fail(error);
 
   revalidateService(serviceId);
   return {

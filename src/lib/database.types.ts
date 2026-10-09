@@ -1025,6 +1025,7 @@ export type Database = {
         Row: {
           admin_notes: string | null
           approved_labor_total: number | null
+          client_fee_total: number
           created_at: string
           estimated_days: number | null
           expert_id: string
@@ -1047,6 +1048,7 @@ export type Database = {
         Insert: {
           admin_notes?: string | null
           approved_labor_total?: number | null
+          client_fee_total?: number
           created_at?: string
           estimated_days?: number | null
           expert_id: string
@@ -1068,6 +1070,7 @@ export type Database = {
         Update: {
           admin_notes?: string | null
           approved_labor_total?: number | null
+          client_fee_total?: number
           created_at?: string
           estimated_days?: number | null
           expert_id?: string
@@ -1241,6 +1244,7 @@ export type Database = {
           cancel_reason: string | null
           category_id: string
           city: string | null
+          client_fee_pct: number
           client_id: string
           closed_at: string | null
           closing_notes: string | null
@@ -1272,6 +1276,7 @@ export type Database = {
           cancel_reason?: string | null
           category_id: string
           city?: string | null
+          client_fee_pct?: number
           client_id: string
           closed_at?: string | null
           closing_notes?: string | null
@@ -1302,6 +1307,7 @@ export type Database = {
           cancel_reason?: string | null
           category_id?: string
           city?: string | null
+          client_fee_pct?: number
           client_id?: string
           closed_at?: string | null
           closing_notes?: string | null
@@ -1476,6 +1482,7 @@ export type Database = {
         Returns: {
           admin_notes: string | null
           approved_labor_total: number | null
+          client_fee_total: number
           created_at: string
           estimated_days: number | null
           expert_id: string
@@ -1590,6 +1597,7 @@ export type Database = {
           cancel_reason: string | null
           category_id: string
           city: string | null
+          client_fee_pct: number
           client_id: string
           closed_at: string | null
           closing_notes: string | null
@@ -1662,6 +1670,7 @@ export type Database = {
         Returns: {
           admin_notes: string | null
           approved_labor_total: number | null
+          client_fee_total: number
           created_at: string
           estimated_days: number | null
           expert_id: string
@@ -1701,6 +1710,7 @@ export type Database = {
           cancel_reason: string | null
           category_id: string
           city: string | null
+          client_fee_pct: number
           client_id: string
           closed_at: string | null
           closing_notes: string | null
@@ -1747,6 +1757,7 @@ export type Database = {
         Returns: {
           admin_notes: string | null
           approved_labor_total: number | null
+          client_fee_total: number
           created_at: string
           estimated_days: number | null
           expert_id: string
@@ -1813,6 +1824,7 @@ export type Database = {
           cancel_reason: string | null
           category_id: string
           city: string | null
+          client_fee_pct: number
           client_id: string
           closed_at: string | null
           closing_notes: string | null
@@ -1939,6 +1951,7 @@ export type Database = {
         Returns: {
           admin_notes: string | null
           approved_labor_total: number | null
+          client_fee_total: number
           created_at: string
           estimated_days: number | null
           expert_id: string
@@ -2010,6 +2023,7 @@ export type Database = {
           cancel_reason: string | null
           category_id: string
           city: string | null
+          client_fee_pct: number
           client_id: string
           closed_at: string | null
           closing_notes: string | null
@@ -2094,6 +2108,7 @@ export type Database = {
         Returns: {
           admin_notes: string | null
           approved_labor_total: number | null
+          client_fee_total: number
           created_at: string
           estimated_days: number | null
           expert_id: string
