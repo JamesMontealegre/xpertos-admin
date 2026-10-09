@@ -54,11 +54,17 @@ function describe(event: TimelineEvent) {
       const labor = amount(payload.labor_total);
       return [labor && `Mano de obra ${labor}`, mode].filter(Boolean).join(" · ") || null;
     }
+    case "quote_presented": {
+      const laborOnly = amount(payload.total_labor_only);
+      const allInclusive = amount(payload.total_all_inclusive);
+      return [laborOnly && `Solo mano de obra ${laborOnly}`, allInclusive && `Todo incluido ${allInclusive}`].filter(Boolean).join(" · ") || null;
+    }
     case "quote_approved": {
+      const mode = PRICING_MODE[payload.pricing_mode as PricingMode]?.short;
       const total = amount(payload.total);
       const materials = Number(payload.materials_total) > 0 ? amount(payload.materials_total) : null;
       return total
-        ? `Total ${total}${materials ? ` (mano de obra ${amount(payload.labor_total)} + materiales ${materials})` : ""}`
+        ? `${mode ? `${mode} · ` : ""}Total ${total}${materials ? ` (mano de obra ${amount(payload.labor_total)} + materiales ${materials})` : ""}`
         : null;
     }
     case "quote_returned":
@@ -84,6 +90,7 @@ const DOT: Record<string, string> = {
   contract_signed: "bg-primary",
   review_created: "bg-accent",
   quote_submitted: "bg-blue-500",
+  quote_presented: "bg-blue-500",
   quote_approved: "bg-emerald-500",
   quote_returned: "bg-orange-500",
   payout_frequency_set: "bg-teal-500",

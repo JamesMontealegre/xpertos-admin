@@ -8,7 +8,7 @@ import { EmptyRow, Table, TBody, Td, THead, Tr } from "@/components/ui/table";
 import type { Database } from "@/lib/database.types";
 import { businessDaysLabel, formatCOP, formatDateTime } from "@/lib/format";
 import { PRICING_MODE, QUOTE_STATUS, type ServiceStatus } from "@/lib/labels";
-import { returnQuote } from "../actions";
+import { choosePricingMode, returnQuote } from "../actions";
 import { QuoteReviewForm } from "./quote-review-form";
 
 type QuoteRow = Database["public"]["Tables"]["service_quotes"]["Row"];
@@ -19,9 +19,12 @@ export type QuoteWithLines = QuoteRow & { items: ItemRow[]; materials: MaterialR
 
 const qty = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 });
 
-/** Neto estimado del experto: mano de obra aprobada menos comisión, más materiales si es todo incluido. */
+/**
+ * Neto estimado del experto: mano de obra aprobada menos comisión, más materiales si el cliente eligió
+ * todo incluido. Mientras el cliente no elige (sin total) no hay neto.
+ */
 export function expertNetEstimate(quote: QuoteRow | null, commissionPct: number) {
-  if (!quote || quote.approved_labor_total == null) return null;
+  if (!quote || quote.approved_labor_total == null || quote.total == null) return null;
   const labor = Number(quote.approved_labor_total);
   const materials = quote.pricing_mode === "all_inclusive" ? Number(quote.materials_total) : 0;
   return Math.round(labor * (1 - commissionPct / 100) + materials);
@@ -67,8 +70,11 @@ export function QuoteCard({
   const estimatedMaterials = materials.some((m) => m.estimated_cost != null)
     ? materials.reduce((acc, m) => acc + Number(m.estimated_cost ?? 0), 0)
     : null;
-  const allInclusive = quote.pricing_mode === "all_inclusive";
   const evaluating = status === "quoting" && quote.status === "submitted";
+  // Presentada al cliente con dos opciones: aún no elige (no hay total).
+  const awaitingChoice = status === "quoting" && quote.status === "approved" && quote.total == null;
+  const chosen = quote.status === "approved" && quote.total != null;
+  const allInclusive = chosen && quote.pricing_mode === "all_inclusive";
   const net = expertNetEstimate(quote, commissionPct);
   const statusInfo = QUOTE_STATUS[quote.status];
 
@@ -98,7 +104,14 @@ export function QuoteCard({
         <DescriptionList
           columns={3}
           items={[
-            { label: "Modalidad", value: PRICING_MODE[quote.pricing_mode].label },
+            {
+              label: "Modalidad",
+              value: chosen
+                ? `${PRICING_MODE[quote.pricing_mode].label} · la eligió el cliente`
+                : awaitingChoice
+                  ? "El cliente está eligiendo"
+                  : "La elige el cliente al presentarle la cotización",
+            },
             {
               label: "Duración estimada",
               value: quote.estimated_days ? businessDaysLabel(quote.estimated_days) : "Sin indicar",
@@ -150,7 +163,12 @@ export function QuoteCard({
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
             Materiales{" "}
             <span className="normal-case tracking-normal text-slate-400">
-              · {allInclusive ? "los suministra el experto (todo incluido)" : "los suministra el cliente"}
+              ·{" "}
+              {chosen
+                ? allInclusive
+                  ? "los cubre Xpertos (todo incluido)"
+                  : "los compra el cliente"
+                : "el cliente decide si los compra o si van por cuenta de Xpertos"}
             </span>
           </p>
           {materials.length === 0 ? (
@@ -185,7 +203,7 @@ export function QuoteCard({
           <div className="space-y-3 border-t border-border pt-5">
             <QuoteReviewForm
               serviceId={serviceId}
-              pricingMode={quote.pricing_mode}
+              hasMaterials={materials.length > 0}
               laborTotal={Number(quote.labor_total)}
               commissionPct={commissionPct}
               materialsEstimate={estimatedMaterials}
@@ -217,14 +235,52 @@ export function QuoteCard({
           </div>
         )}
 
-        {quote.status === "approved" && (
+        {awaitingChoice && (
+          <div className="space-y-4 border-t border-border pt-5">
+            <Alert tone="info">
+              Presentada al cliente el {formatDateTime(quote.reviewed_at)}: está eligiendo la opción en su app. Si te la
+              confirma por otro medio, regístrala aquí.
+            </Alert>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(
+                [
+                  ["labor_only", quote.total_labor_only, "El cliente compra los materiales de la lista."],
+                  ["all_inclusive", quote.total_all_inclusive, "Los materiales y el experto van por cuenta de Xpertos."],
+                ] as const
+              ).map(([mode, total, help]) => (
+                <div key={mode} className="flex flex-col gap-3 rounded-xl border border-border p-4">
+                  <div>
+                    <p className="text-sm font-medium">{PRICING_MODE[mode].label}</p>
+                    <p className="text-xl font-semibold text-primary">{formatCOP(total)}</p>
+                    <p className="mt-1 text-xs text-slate-500">{help}</p>
+                  </div>
+                  {total != null && (
+                    <ActionDialog
+                      triggerLabel="Registrar esta opción"
+                      triggerVariant="secondary"
+                      triggerSize="sm"
+                      title={`Registrar: ${PRICING_MODE[mode].label}`}
+                      description={`El cliente eligió ${PRICING_MODE[mode].short.toLowerCase()} por ${formatCOP(total)}. Se crea el cobro, el servicio pasa a Pendiente de pago y le enviamos cómo pagar.`}
+                      action={choosePricingMode}
+                      fields={{ service_id: serviceId, pricing_mode: mode }}
+                      submitLabel="Registrar opción"
+                      pendingLabel="Registrando…"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {chosen && (
           <div className="border-t border-border pt-5">
             <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">Valores aprobados</p>
             <DescriptionList
               columns={3}
               items={[
                 { label: "Mano de obra aprobada", value: formatCOP(quote.approved_labor_total) },
-                { label: "Materiales", value: allInclusive ? formatCOP(quote.materials_total) : "No aplica" },
+                { label: "Materiales", value: allInclusive ? formatCOP(quote.materials_total) : "Los compra el cliente" },
                 { label: "Total del cliente", value: <span className="font-semibold text-primary">{formatCOP(quote.total)}</span> },
                 { label: "Comisión", value: `${commissionPct} %` },
                 { label: "Neto estimado del experto", value: formatCOP(net) },

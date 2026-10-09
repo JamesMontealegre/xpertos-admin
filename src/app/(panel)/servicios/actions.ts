@@ -132,19 +132,22 @@ function parseAmount(raw: string) {
   return Number.isFinite(n) ? n : NaN;
 }
 
-/** Aprueba la cotización: crea el cobro único, genera el contrato y deja el servicio Pendiente de pago. */
+/**
+ * Presenta la cotización al cliente con dos opciones: solo mano de obra y todo incluido (mano de obra +
+ * materiales). El cliente elige en su app. Sin materiales hay una sola opción y se le cobra de una vez.
+ */
 export async function approveQuote(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const serviceId = fieldString(formData, "service_id");
-  const pricingMode = fieldString(formData, "pricing_mode");
+  const hasMaterials = fieldString(formData, "has_materials") === "1";
   const labor = parseAmount(fieldString(formData, "labor_total"));
-  const materials = pricingMode === "all_inclusive" ? parseAmount(fieldString(formData, "materials_total")) : 0;
+  const materials = hasMaterials ? parseAmount(fieldString(formData, "materials_total")) : 0;
   const commission = Number(fieldString(formData, "commission_pct"));
   const notes = fieldString(formData, "notes");
 
   if (!serviceId) return { ok: false, message: "Servicio no válido." };
   if (!Number.isFinite(labor) || labor <= 0) return { ok: false, message: "La mano de obra aprobada debe ser mayor a cero." };
-  if (pricingMode === "all_inclusive" && (!Number.isFinite(materials) || materials <= 0)) {
-    return { ok: false, message: "La cotización es todo incluido: indica el valor de los materiales." };
+  if (hasMaterials && (!Number.isFinite(materials) || materials <= 0)) {
+    return { ok: false, message: "Indica el valor de los materiales para la opción todo incluido." };
   }
   if (!Number.isFinite(commission) || commission < 0 || commission > 100) {
     return { ok: false, message: "La comisión debe estar entre 0 y 100 %." };
@@ -179,7 +182,26 @@ export async function approveQuote(_prev: ActionResult, formData: FormData): Pro
   }
 
   revalidateService(serviceId);
-  return { ok: true, message: "Cotización aprobada. El servicio quedó Pendiente de pago." };
+  return {
+    ok: true,
+    message: hasMaterials
+      ? "Cotización presentada al cliente: elegirá entre solo mano de obra y todo incluido."
+      : "Cotización aprobada. Sin materiales hay una sola opción: el servicio quedó Pendiente de pago.",
+  };
+}
+
+/** Registra la opción que eligió el cliente (p. ej. por teléfono): crea el cobro y pasa a Pendiente de pago. */
+export async function choosePricingMode(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const serviceId = fieldString(formData, "service_id");
+  const mode = fieldString(formData, "pricing_mode");
+  if (!serviceId || (mode !== "labor_only" && mode !== "all_inclusive")) return { ok: false, message: "Opción no válida." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("choose_pricing_mode", { p_service_id: serviceId, p_mode: mode });
+  if (error) return fail(error);
+
+  revalidateService(serviceId);
+  return { ok: true, message: "Opción registrada. El servicio quedó Pendiente de pago." };
 }
 
 /** Devuelve la cotización al experto con el motivo; el servicio vuelve a Asignado. */

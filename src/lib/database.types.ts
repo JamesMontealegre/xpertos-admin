@@ -1039,6 +1039,8 @@ export type Database = {
           status: Database["public"]["Enums"]["quote_status"]
           submitted_at: string | null
           total: number | null
+          total_all_inclusive: number | null
+          total_labor_only: number | null
           updated_at: string
         }
         ComputedFields: never
@@ -1059,6 +1061,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["quote_status"]
           submitted_at?: string | null
           total?: number | null
+          total_all_inclusive?: number | null
+          total_labor_only?: number | null
           updated_at?: string
         }
         Update: {
@@ -1078,6 +1082,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["quote_status"]
           submitted_at?: string | null
           total?: number | null
+          total_all_inclusive?: number | null
+          total_labor_only?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1248,6 +1254,7 @@ export type Database = {
           pause_reason: string | null
           payment_date: string | null
           payout_frequency: Database["public"]["Enums"]["payout_frequency"]
+          pricing_mode: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date: string | null
           scheduled_at: string | null
           start_date: string | null
@@ -1278,6 +1285,7 @@ export type Database = {
           pause_reason?: string | null
           payment_date?: string | null
           payout_frequency?: Database["public"]["Enums"]["payout_frequency"]
+          pricing_mode?: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date?: string | null
           scheduled_at?: string | null
           start_date?: string | null
@@ -1307,6 +1315,7 @@ export type Database = {
           pause_reason?: string | null
           payment_date?: string | null
           payout_frequency?: Database["public"]["Enums"]["payout_frequency"]
+          pricing_mode?: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date?: string | null
           scheduled_at?: string | null
           start_date?: string | null
@@ -1458,6 +1467,40 @@ export type Database = {
       }
     }
     Functions: {
+      _apply_pricing_mode: {
+        Args: {
+          p_actor: string
+          p_mode: Database["public"]["Enums"]["pricing_mode"]
+          p_service_id: string
+        }
+        Returns: {
+          admin_notes: string | null
+          approved_labor_total: number | null
+          created_at: string
+          estimated_days: number | null
+          expert_id: string
+          id: string
+          labor_total: number
+          materials_total: number
+          notes: string | null
+          pricing_mode: Database["public"]["Enums"]["pricing_mode"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          service_id: string
+          status: Database["public"]["Enums"]["quote_status"]
+          submitted_at: string | null
+          total: number | null
+          total_all_inclusive: number | null
+          total_labor_only: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "service_quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _build_contract: {
         Args: { p_extra_terms?: string; p_service_id: string }
         Returns: {
@@ -1560,6 +1603,7 @@ export type Database = {
           pause_reason: string | null
           payment_date: string | null
           payout_frequency: Database["public"]["Enums"]["payout_frequency"]
+          pricing_mode: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date: string | null
           scheduled_at: string | null
           start_date: string | null
@@ -1632,6 +1676,8 @@ export type Database = {
           status: Database["public"]["Enums"]["quote_status"]
           submitted_at: string | null
           total: number | null
+          total_all_inclusive: number | null
+          total_labor_only: number | null
           updated_at: string
         }
         SetofOptions: {
@@ -1668,6 +1714,7 @@ export type Database = {
           pause_reason: string | null
           payment_date: string | null
           payout_frequency: Database["public"]["Enums"]["payout_frequency"]
+          pricing_mode: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date: string | null
           scheduled_at: string | null
           start_date: string | null
@@ -1691,6 +1738,39 @@ export type Database = {
       can_log_work: {
         Args: { p_service_id: string; p_work_date: string }
         Returns: boolean
+      }
+      choose_pricing_mode: {
+        Args: {
+          p_mode: Database["public"]["Enums"]["pricing_mode"]
+          p_service_id: string
+        }
+        Returns: {
+          admin_notes: string | null
+          approved_labor_total: number | null
+          created_at: string
+          estimated_days: number | null
+          expert_id: string
+          id: string
+          labor_total: number
+          materials_total: number
+          notes: string | null
+          pricing_mode: Database["public"]["Enums"]["pricing_mode"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          service_id: string
+          status: Database["public"]["Enums"]["quote_status"]
+          submitted_at: string | null
+          total: number | null
+          total_all_inclusive: number | null
+          total_labor_only: number | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "service_quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       claim_email_outbox: {
         Args: { p_limit?: number }
@@ -1746,6 +1826,7 @@ export type Database = {
           pause_reason: string | null
           payment_date: string | null
           payout_frequency: Database["public"]["Enums"]["payout_frequency"]
+          pricing_mode: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date: string | null
           scheduled_at: string | null
           start_date: string | null
@@ -1842,6 +1923,10 @@ export type Database = {
         Args: { p: Database["public"]["Enums"]["payout_method"] }
         Returns: string
       }
+      pricing_mode_label: {
+        Args: { p: Database["public"]["Enums"]["pricing_mode"] }
+        Returns: string
+      }
       promote_to_admin: { Args: { p_email: string }; Returns: string }
       reapply_application: { Args: Record<PropertyKey, never>; Returns: string }
       reject_application_document: {
@@ -1868,6 +1953,8 @@ export type Database = {
           status: Database["public"]["Enums"]["quote_status"]
           submitted_at: string | null
           total: number | null
+          total_all_inclusive: number | null
+          total_labor_only: number | null
           updated_at: string
         }
         SetofOptions: {
@@ -1936,6 +2023,7 @@ export type Database = {
           pause_reason: string | null
           payment_date: string | null
           payout_frequency: Database["public"]["Enums"]["payout_frequency"]
+          pricing_mode: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date: string | null
           scheduled_at: string | null
           start_date: string | null
@@ -2020,6 +2108,8 @@ export type Database = {
           status: Database["public"]["Enums"]["quote_status"]
           submitted_at: string | null
           total: number | null
+          total_all_inclusive: number | null
+          total_labor_only: number | null
           updated_at: string
         }
         SetofOptions: {

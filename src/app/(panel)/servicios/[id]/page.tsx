@@ -21,6 +21,7 @@ import {
   SERVICE_STATUS,
   payoutMethodLabel,
   type ServiceStatus,
+  PRICING_MODE,
 } from "@/lib/labels";
 import { STARTED_STATUSES, WORK_STATUSES } from "@/lib/service-phase";
 import { signedUrlMap } from "@/lib/storage";
@@ -247,7 +248,9 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
             ? "El experto está armando la cotización"
             : "Esperando la cotización del experto";
       case "quoting":
-        return "Revisar y aprobar la cotización";
+        return quoteWithLines?.status === "approved"
+          ? "Presentada: el cliente elige solo mano de obra o todo incluido"
+          : "Revisar y presentar la cotización al cliente";
       case "pending_payment":
         return hasProofToVerify ? "Hay un comprobante por verificar" : "Esperando el comprobante del cliente";
       case "scheduled":
@@ -456,6 +459,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
             columns={3}
             items={[
               { label: "Categoría", value: service.category?.name ?? "—" },
+              { label: "Modalidad", value: service.pricing_mode ? `${PRICING_MODE[service.pricing_mode].label} · la eligió el cliente` : "La elige el cliente al presentarle la cotización" },
               { label: "Ciudad", value: service.city ?? "—" },
               { label: "Dirección", value: service.address ?? "—" },
               { label: "Total aprobado", value: formatCOP(service.estimated_price) },
