@@ -266,6 +266,7 @@ export const EMAIL_TEMPLATE_LABEL: Record<string, string> = {
   service_cancelled: "Servicio cancelado",
   payout_sent: "Pago al experto",
   application_received: "Postulación recibida",
+  application_credentials: "Acceso del aspirante",
   application_approved: "Postulación aprobada",
   application_rejected: "Postulación rechazada",
   application_needs_info: "Postulación: falta información",

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireAdmin } from "@/lib/auth";
+import { requireSuperAdmin } from "@/lib/auth";
 import { ActionButton, ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -14,7 +14,7 @@ const COLUMNS = ["Orden", "Banco", "Tipo", "Número", "Titular", "Estado", "Acci
 const ACCOUNT_TYPES = ["Ahorros", "Corriente", "Billetera"];
 
 export default async function PaymentAccountsPage() {
-  const { supabase } = await requireAdmin();
+  const { supabase } = await requireSuperAdmin();
   const { data: accounts, error } = await supabase
     .from("payment_accounts")
     .select("*")

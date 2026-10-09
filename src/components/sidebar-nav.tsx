@@ -9,15 +9,16 @@ const ITEMS = [
   { href: "/solicitudes", label: "Solicitudes" },
   { href: "/servicios", label: "Servicios" },
   { href: "/expertos", label: "Expertos" },
-  { href: "/configuracion/cuentas", label: "Cuentas de recaudo" },
   { href: "/configuracion/correos", label: "Correos" },
-] as const;
+  // Configuración: solo el superadmin (no es parte de la operación de los agentes).
+  { href: "/configuracion/cuentas", label: "Cuentas de recaudo", superAdminOnly: true },
+];
 
-export function SidebarNav() {
+export function SidebarNav({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) {
   const pathname = usePathname();
   return (
     <nav aria-label="Secciones" className="flex gap-1 overflow-x-auto lg:flex-col">
-      {ITEMS.map((item) => {
+      {ITEMS.filter((item) => isSuperAdmin || !item.superAdminOnly).map((item) => {
         const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
         return (
           <Link

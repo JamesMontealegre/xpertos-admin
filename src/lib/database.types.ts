@@ -1864,6 +1864,20 @@ export type Database = {
         Args: { p: Database["public"]["Enums"]["pricing_mode"] }
         Returns: number
       }
+      submit_landing_application: {
+        Args: {
+          p_bio: string
+          p_category_ids: string[]
+          p_city: string
+          p_email: string
+          p_experience_years: number
+          p_full_name: string
+          p_phone: string
+          p_temp_password?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       submit_quote: {
         Args: { p_service_id: string }
         Returns: {

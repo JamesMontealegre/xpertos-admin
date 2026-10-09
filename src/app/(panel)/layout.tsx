@@ -18,7 +18,7 @@ export default async function PanelLayout({ children }: LayoutProps<"/">) {
               Panel de operación
             </span>
           </Link>
-          <SidebarNav />
+          <SidebarNav isSuperAdmin={profile.is_super_admin} />
         </div>
       </aside>
 
