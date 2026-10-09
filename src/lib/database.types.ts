@@ -668,6 +668,7 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
+          is_super_admin: boolean
           phone: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
@@ -680,6 +681,7 @@ export type Database = {
           email?: string | null
           full_name?: string
           id: string
+          is_super_admin?: boolean
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -691,6 +693,7 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
+          is_super_admin?: boolean
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -1659,6 +1662,16 @@ export type Database = {
         Args: { p_key: string; p_url: string }
         Returns: undefined
       }
+      create_admin_user: {
+        Args: {
+          p_city?: string
+          p_email: string
+          p_full_name: string
+          p_password: string
+          p_phone?: string
+        }
+        Returns: string
+      }
       current_role: {
         Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["user_role"]
@@ -1702,6 +1715,7 @@ export type Database = {
       is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_business_day: { Args: { p_day: string }; Returns: boolean }
       is_service_party: { Args: { p_service_id: string }; Returns: boolean }
+      is_super_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
       open_next_stage: { Args: { p_service_id: string }; Returns: undefined }
       payout_frequency_label: {
         Args: { p: Database["public"]["Enums"]["payout_frequency"] }
@@ -1711,6 +1725,7 @@ export type Database = {
         Args: { p: Database["public"]["Enums"]["payout_method"] }
         Returns: string
       }
+      promote_to_admin: { Args: { p_email: string }; Returns: string }
       retry_email: { Args: { p_id: string }; Returns: undefined }
       return_quote: {
         Args: { p_notes: string; p_service_id: string }
@@ -1812,6 +1827,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      set_super_admin: {
+        Args: { p_email: string; p_enabled?: boolean }
+        Returns: string
       }
       sign_contract: {
         Args: {

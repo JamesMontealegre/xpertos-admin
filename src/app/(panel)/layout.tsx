@@ -26,6 +26,15 @@ export default async function PanelLayout({ children }: LayoutProps<"/">) {
         <header className="flex items-center justify-between gap-4 border-b border-border bg-white px-4 py-3 sm:px-8">
           <p className="truncate text-sm text-slate-600">
             Operador: <span className="font-medium text-foreground">{profile.full_name || profile.email}</span>
+            <span
+              className={
+                profile.is_super_admin
+                  ? "ml-2 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent-hover"
+                  : "ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
+              }
+            >
+              {profile.is_super_admin ? "Superadmin" : "Agente"}
+            </span>
           </p>
           <form action={logout}>
             <button type="submit" className={buttonClasses("ghost", "sm")}>
