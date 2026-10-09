@@ -14,16 +14,22 @@ const CHECK_MS = 3_000;
 const IDLE_MS = 4_000;
 const TOAST_MS = 10_000;
 
-type Toast = { id: string; name: string; city: string | null };
+type Scope = "applications" | "services";
+type Toast = { key: string; title: string; detail: string; href: string; cta: string };
 
-/** Páginas cuyos datos dependen de las postulaciones. */
-const isApplicationsPage = (path: string) => path === "/" || path.startsWith("/solicitudes");
+/** Páginas cuyos datos dependen de cada tipo de cambio (el dashboard muestra ambos). */
+const SCOPE_MATCH: Record<Scope, (path: string) => boolean> = {
+  applications: (path) => path === "/" || path.startsWith("/solicitudes"),
+  services: (path) => path === "/" || path.startsWith("/servicios"),
+};
+const isLivePage = (path: string) => SCOPE_MATCH.applications(path) || SCOPE_MATCH.services(path);
 
 /**
- * Actualización en vivo del panel:
- * - Tiempo real (Supabase): una postulación nueva muestra un aviso con enlace, en cualquier página;
- *   cambios en postulaciones o documentos marcan las páginas de solicitudes para actualizar.
- * - Respaldo: cada minuto se actualizan las páginas de solicitudes.
+ * Actualización en vivo del panel (postulaciones y servicios):
+ * - Tiempo real (Supabase): una postulación o una solicitud de servicio nueva muestra un aviso con
+ *   enlace, en cualquier página. Los cambios (documentos, estados, cotizaciones, pagos, jornadas)
+ *   marcan para actualizar las páginas que los muestran.
+ * - Respaldo: cada minuto se actualizan las páginas de solicitudes, servicios y el dashboard.
  *
  * La actualización (router.refresh) conserva el scroll y lo abierto, y además espera a que el agente
  * esté libre: sin escribir en un campo, sin diálogos abiertos, sin acciones guardándose, sin texto
@@ -61,8 +67,8 @@ export function LiveUpdates() {
       return Date.now() - lastInputRef.current < IDLE_MS;
     };
 
-    const requestRefresh = () => {
-      if (isApplicationsPage(pathRef.current)) pendingRef.current = true;
+    const requestRefresh = (scope: Scope) => {
+      if (SCOPE_MATCH[scope](pathRef.current)) pendingRef.current = true;
     };
 
     const check = window.setInterval(() => {
@@ -71,19 +77,30 @@ export function LiveUpdates() {
         router.refresh();
       }
     }, CHECK_MS);
-    const poll = window.setInterval(requestRefresh, POLL_MS);
+    const poll = window.setInterval(() => {
+      if (isLivePage(pathRef.current)) pendingRef.current = true;
+    }, POLL_MS);
 
     const baseTitle = () => document.title.replace(/^\(\d+\)\s*/, "");
     const onVisibility = () => {
       if (document.visibilityState === "visible") {
         unseenRef.current = 0;
         document.title = baseTitle();
-        requestRefresh();
+        if (isLivePage(pathRef.current)) pendingRef.current = true;
+      }
+    };
+
+    const notify = (toast: Toast) => {
+      setToasts((list) => [...list.filter((t) => t.key !== toast.key).slice(-2), toast]);
+      window.setTimeout(() => setToasts((list) => list.filter((t) => t.key !== toast.key)), TOAST_MS);
+      if (document.visibilityState !== "visible") {
+        unseenRef.current += 1;
+        document.title = `(${unseenRef.current}) ${baseTitle()}`;
       }
     };
 
     // Primero la sesión del agente y luego la suscripción: sin el token, Realtime suscribe como anónimo
-    // y las reglas de la base (RLS) no le envían ninguna postulación.
+    // y las reglas de la base (RLS) no le envían nada.
     const supabase = createClient();
     let channel: ReturnType<typeof supabase.channel> | null = null;
     let cancelled = false;
@@ -93,19 +110,35 @@ export function LiveUpdates() {
       await supabase.realtime.setAuth(data.session.access_token);
       if (cancelled) return;
       channel = supabase
-        .channel("panel-solicitudes")
+        .channel("panel-en-vivo")
+        // Postulaciones
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "expert_applications" }, (payload) => {
           const row = payload.new as { id: string; full_name?: string; city?: string | null };
-          setToasts((list) => [...list.slice(-2), { id: row.id, name: row.full_name || "Aspirante", city: row.city ?? null }]);
-          window.setTimeout(() => setToasts((list) => list.filter((t) => t.id !== row.id)), TOAST_MS);
-          if (document.visibilityState !== "visible") {
-            unseenRef.current += 1;
-            document.title = `(${unseenRef.current}) ${baseTitle()}`;
-          }
-          requestRefresh();
+          notify({
+            key: `app:${row.id}`,
+            title: "Nueva postulación",
+            detail: [row.full_name || "Aspirante", row.city].filter(Boolean).join(" · "),
+            href: `/solicitudes/${row.id}`,
+            cta: "Ver postulación",
+          });
+          requestRefresh("applications");
         })
-        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "expert_applications" }, requestRefresh)
-        .on("postgres_changes", { event: "*", schema: "public", table: "application_documents" }, requestRefresh)
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "expert_applications" }, () => requestRefresh("applications"))
+        .on("postgres_changes", { event: "*", schema: "public", table: "application_documents" }, () => requestRefresh("applications"))
+        // Servicios
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "services" }, (payload) => {
+          const row = payload.new as { id: string; title?: string; city?: string | null };
+          notify({
+            key: `svc:${row.id}`,
+            title: "Nueva solicitud de servicio",
+            detail: [row.title || "Servicio", row.city].filter(Boolean).join(" · "),
+            href: `/servicios/${row.id}`,
+            cta: "Ver servicio",
+          });
+          requestRefresh("services");
+        })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "service_events" }, () => requestRefresh("services"))
+        .on("postgres_changes", { event: "*", schema: "public", table: "work_logs" }, () => requestRefresh("services"))
         .subscribe();
     })();
 
@@ -129,29 +162,26 @@ export function LiveUpdates() {
     <div className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex flex-col items-end gap-2 sm:inset-x-auto sm:right-6 sm:bottom-6">
       {toasts.map((t) => (
         <div
-          key={t.id}
+          key={t.key}
           role="status"
           aria-live="polite"
           className="pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border border-border bg-white p-4 shadow-lg"
         >
           <span className="mt-1 size-2.5 shrink-0 rounded-full bg-accent" aria-hidden />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-foreground">Nueva postulación</p>
-            <p className="truncate text-sm text-slate-600">
-              {t.name}
-              {t.city ? ` · ${t.city}` : ""}
-            </p>
+            <p className="text-sm font-semibold text-foreground">{t.title}</p>
+            <p className="truncate text-sm text-slate-600">{t.detail}</p>
             <Link
-              href={`/solicitudes/${t.id}`}
-              onClick={() => setToasts((list) => list.filter((x) => x.id !== t.id))}
+              href={t.href}
+              onClick={() => setToasts((list) => list.filter((x) => x.key !== t.key))}
               className="mt-1 inline-block text-sm font-medium text-primary hover:underline"
             >
-              Ver postulación
+              {t.cta}
             </Link>
           </div>
           <button
             type="button"
-            onClick={() => setToasts((list) => list.filter((x) => x.id !== t.id))}
+            onClick={() => setToasts((list) => list.filter((x) => x.key !== t.key))}
             aria-label="Cerrar aviso"
             className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
           >
