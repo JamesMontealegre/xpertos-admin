@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
-import { formatDateTime } from "@/lib/format";
+import { daysUntil, formatDate, formatDateTime } from "@/lib/format";
 import {
   APPLICATION_STATUS,
   DOCUMENT_KIND,
@@ -13,12 +13,9 @@ import { signedUrl } from "@/lib/storage";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, DescriptionList } from "@/components/ui/card";
-import { Field, Textarea } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
-import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { FilePreview } from "@/components/ui/file-preview";
-import { reviewApplication } from "../actions";
-import { ReviewActions } from "../review-actions";
+import { RejectDocumentButton, ReviewActions } from "../review-actions";
 
 export const metadata: Metadata = { title: "Detalle de solicitud" };
 
@@ -53,14 +50,20 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
     })),
   );
 
+  // Los documentos rechazados no cuentan: el aspirante debe subirlos de nuevo.
+  const activeDocs = docsWithUrls.filter((d) => d.status !== "rejected");
+  const rejectedDocs = docsWithUrls.filter((d) => d.status === "rejected");
   const requirements = applicationRequirements(
-    (documents ?? []).map((d) => d.kind),
+    activeDocs.map((d) => d.kind),
     application.payout_method,
     application.payout_account,
   );
   const missing = requirements.filter((r) => !r.done);
   const status = APPLICATION_STATUS[application.status];
-  const isFinal = application.status === "approved";
+  // Abierta: el aspirante aún completa (pendiente) o el agente revisa (en revisión).
+  const isPending = application.status === "pending" || application.status === "needs_info";
+  const isOpen = isPending || application.status === "in_review";
+  const daysLeft = daysUntil(application.expires_at);
 
   return (
     <>
@@ -132,6 +135,14 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
                     ),
                   },
                   {
+                    label: "Plazo para completar",
+                    value: isPending
+                      ? `Hasta el ${formatDate(application.expires_at)} · ${daysLeft === 0 ? "vence hoy" : daysLeft === 1 ? "queda 1 día" : `quedan ${daysLeft} días`}`
+                      : application.status === "expired"
+                        ? `Venció el ${formatDate(application.expires_at)}`
+                        : "—",
+                  },
+                  {
                     label: "Última revisión",
                     value: application.reviewed_at
                       ? `${formatDateTime(application.reviewed_at)}${application.reviewer?.full_name ? ` · ${application.reviewer.full_name}` : ""}`
@@ -175,16 +186,16 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
                 Requisitos: cédula (frente y reverso), planilla de seguridad social y ARL, foto 3x4, carta de
                 recomendación y el soporte del medio de pago (certificación bancaria, número Nequi o Efecty).
               </p>
-              {docsWithUrls.length === 0 ? (
+              {activeDocs.length === 0 ? (
                 <p className="text-sm text-slate-500">
                   El aspirante aún no ha subido documentos
                   {application.user_id ? "." : "; primero debe registrarse en la app."}
                 </p>
               ) : (
                 <ul className="grid gap-4 sm:grid-cols-2">
-                  {docsWithUrls.map((doc) => (
+                  {activeDocs.map((doc) => (
                     <li key={doc.id} className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-sm font-medium">{DOCUMENT_KIND[doc.kind]}</p>
                           <p className="truncate text-xs text-slate-500">{doc.file_name}</p>
@@ -196,9 +207,38 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
                         )}
                       </div>
                       <FilePreview url={doc.url} path={doc.storage_path} mime={doc.mime_type} name={doc.file_name} />
+                      {isOpen && (
+                        <RejectDocumentButton applicationId={application.id} document={{ id: doc.id, label: DOCUMENT_KIND[doc.kind] }} />
+                      )}
                     </li>
                   ))}
                 </ul>
+              )}
+              {rejectedDocs.length > 0 && (
+                <div className="space-y-2 border-t border-border pt-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Documentos rechazados</p>
+                  <ul className="divide-y divide-border rounded-lg border border-border">
+                    {rejectedDocs.map((doc) => (
+                      <li key={doc.id} className="flex items-start justify-between gap-3 p-3">
+                        <div className="min-w-0 space-y-1">
+                          <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                            {DOCUMENT_KIND[doc.kind]} <Badge tone="red">Rechazado</Badge>
+                          </p>
+                          {doc.rejection_reason && <p className="text-sm text-slate-700">Motivo: {doc.rejection_reason}</p>}
+                          <p className="truncate text-xs text-slate-500">
+                            {doc.file_name}
+                            {doc.reviewed_at ? ` · ${formatDateTime(doc.reviewed_at)}` : ""}
+                          </p>
+                        </div>
+                        {doc.url && (
+                          <a href={doc.url} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-medium text-primary hover:underline">
+                            Abrir
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </CardBody>
           </Card>
@@ -206,73 +246,74 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
 
         <div className="space-y-6">
           <Card>
-            <CardHeader title="Revisión" description="Las notas se guardan junto con la decisión." />
-            <CardBody>
-              {isFinal ? (
-                <div className="space-y-3">
-                  <Alert tone="success">Esta postulación ya fue aprobada; el aspirante ahora es experto.</Alert>
-                  {application.admin_notes && (
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Notas del operador</p>
-                      <p className="mt-1 whitespace-pre-line text-sm">{application.admin_notes}</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-5">
-                  {application.admin_notes && (
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                        {application.status === "rejected" ? "Justificación del rechazo" : "Notas del operador"}
-                      </p>
-                      <p className="mt-1 whitespace-pre-line text-sm">{application.admin_notes}</p>
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-slate-700">Decisión</p>
-                    <ReviewActions
-                      application={application}
-                      missingRequirements={missing.map((r) => r.label)}
-                      size="md"
-                      layout="stack"
-                    />
-                    {!application.user_id && application.status !== "rejected" && (
-                      <p className="text-xs text-slate-500">
-                        No es posible aprobar: el aspirante aún no se registra en la app. Al registrarse con el correo{" "}
-                        <span className="font-medium">{application.email}</span>, la postulación se enlazará automáticamente.
-                      </p>
-                    )}
-                  </div>
-                  {application.status !== "rejected" && (
-                    <ActionForm action={reviewApplication} className="space-y-4 border-t border-border pt-4">
-                      <input type="hidden" name="application_id" value={application.id} />
-                      <Field
-                        label="Seguimiento"
-                        htmlFor="notes"
-                        hint="Para pedir información, escribe qué le falta al aspirante; lo verá en la app."
-                      >
-                        <Textarea
-                          id="notes"
-                          name="notes"
-                          defaultValue={
-                            missing.length > 0 && application.status !== "needs_info"
-                              ? `Por favor completa: ${missing.map((r) => r.label).join(", ")}.`
-                              : ""
-                          }
-                          placeholder="Ej.: falta el RUT actualizado y el certificado de antecedentes."
-                        />
-                      </Field>
+            <CardHeader title="Revisión" />
+            <CardBody className="space-y-4">
+              {isPending && (
+                <>
+                  <Alert tone="warning">
+                    <p className="font-medium">Esperando documentos del aspirante</p>
+                    <p className="mt-1">
+                      Pasa sola a En revisión cuando complete los {REQUIREMENTS_TOTAL} requisitos. Tiene hasta el{" "}
+                      {formatDate(application.expires_at)}
+                      {daysLeft != null && ` (${daysLeft === 0 ? "vence hoy" : daysLeft === 1 ? "queda 1 día" : `quedan ${daysLeft} días`})`}; si no,
+                      la postulación se vence automáticamente.
+                    </p>
+                  </Alert>
+                  <p className="text-xs text-slate-500">
+                    Aprobar y rechazar se habilitan cuando la postulación está En revisión. Si un documento tiene un
+                    problema, recházalo puntualmente en la sección Documentos.
+                  </p>
+                </>
+              )}
 
-                      <div className="grid gap-2">
-                        <SubmitButton name="status" value="in_review" variant="secondary" disabled={application.status === "in_review"}>
-                          Marcar en revisión
-                        </SubmitButton>
-                        <SubmitButton name="status" value="needs_info" variant="secondary">
-                          Pedir más información
-                        </SubmitButton>
-                      </div>
-                    </ActionForm>
+              {application.status === "in_review" && (
+                <>
+                  <Alert tone="info">
+                    Los {REQUIREMENTS_TOTAL} requisitos están completos. Revisa los documentos y decide. Si solo un
+                    documento es inconsistente, recházalo en la sección Documentos y la postulación vuelve a Pendiente.
+                  </Alert>
+                  <ReviewActions application={application} />
+                  {!application.user_id && (
+                    <p className="text-xs text-slate-500">
+                      No es posible aprobar: el aspirante aún no tiene cuenta en la app con el correo{" "}
+                      <span className="font-medium">{application.email}</span>.
+                    </p>
                   )}
+                </>
+              )}
+
+              {application.status === "approved" && (
+                <Alert tone="success">Esta postulación ya fue aprobada; el aspirante ahora es experto.</Alert>
+              )}
+
+              {application.status === "rejected" && (
+                <>
+                  <Alert tone="error">
+                    <p className="font-medium">Postulación rechazada</p>
+                    <p className="mt-1">
+                      El aspirante ve el motivo en la app y puede presentar una nueva postulación cuando lo resuelva.
+                    </p>
+                  </Alert>
+                  <ReviewActions application={application} />
+                </>
+              )}
+
+              {application.status === "expired" && (
+                <>
+                  <Alert tone="info">
+                    Venció el {formatDate(application.expires_at)} sin completarse. El aspirante puede presentar una nueva
+                    postulación desde la app.
+                  </Alert>
+                  <ReviewActions application={application} />
+                </>
+              )}
+
+              {application.admin_notes && (
+                <div className="border-t border-border pt-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    {application.status === "rejected" ? "Motivo del rechazo" : "Notas del operador"}
+                  </p>
+                  <p className="mt-1 whitespace-pre-line text-sm">{application.admin_notes}</p>
                 </div>
               )}
             </CardBody>

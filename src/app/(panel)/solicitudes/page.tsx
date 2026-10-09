@@ -45,7 +45,7 @@ export default async function ApplicationsPage(props: PageProps<"/solicitudes">)
 
   let query = supabase
     .from("expert_applications")
-    .select("id, full_name, email, city, category_ids, experience_years, status, created_at, user_id, payout_method, payout_account")
+    .select("id, full_name, email, city, category_ids, experience_years, status, created_at, expires_at, user_id, payout_method, payout_account")
     .order("created_at", { ascending: false })
     .limit(200);
   if (status) query = query.eq("status", status);
@@ -62,7 +62,7 @@ export default async function ApplicationsPage(props: PageProps<"/solicitudes">)
 
   const ids = (applications ?? []).map((a) => a.id);
   const { data: documents } = ids.length
-    ? await supabase.from("application_documents").select("application_id, kind").in("application_id", ids)
+    ? await supabase.from("application_documents").select("application_id, kind").in("application_id", ids).neq("status", "rejected")
     : { data: [] as { application_id: string; kind: DocumentKind }[] };
   const kindsByApplication = new Map<string, DocumentKind[]>();
   for (const doc of documents ?? []) {
@@ -165,6 +165,9 @@ export default async function ApplicationsPage(props: PageProps<"/solicitudes">)
                   </Td>
                   <Td className="whitespace-nowrap">
                     <Badge tone={APPLICATION_STATUS[a.status].tone}>{APPLICATION_STATUS[a.status].label}</Badge>
+                    {(a.status === "pending" || a.status === "needs_info") && (
+                      <p className="mt-1 text-xs text-slate-500">Vence el {shortDate.format(new Date(a.expires_at))}</p>
+                    )}
                   </Td>
                   <Td className="hidden whitespace-nowrap text-slate-600 min-[1440px]:table-cell">
                     {shortDate.format(new Date(a.created_at))}

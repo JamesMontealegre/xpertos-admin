@@ -3,26 +3,25 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { fail, fieldString, type ActionResult } from "@/lib/actions";
-import { APPLICATION_STATUS, type ApplicationStatus } from "@/lib/labels";
 
-const ALLOWED: ApplicationStatus[] = ["in_review", "needs_info", "rejected", "approved"];
+function revalidateApplication(applicationId: string) {
+  revalidatePath("/solicitudes");
+  revalidatePath(`/solicitudes/${applicationId}`);
+  revalidatePath("/expertos");
+  revalidatePath("/");
+}
 
+/** Aprobar (envía el correo de bienvenida) o rechazar con motivo. Solo con la postulación En revisión. */
 export async function reviewApplication(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const applicationId = fieldString(formData, "application_id");
-  const status = fieldString(formData, "status") as ApplicationStatus;
+  const status = fieldString(formData, "status");
   const notes = fieldString(formData, "notes");
 
-  if (!applicationId || !ALLOWED.includes(status)) {
+  if (!applicationId || (status !== "approved" && status !== "rejected")) {
     return { ok: false, message: "Acción no válida." };
   }
-  if (status === "needs_info" && !notes) {
-    return { ok: false, message: "Escribe en las notas qué información falta para el aspirante." };
-  }
   if (status === "rejected" && notes.length < 10) {
-    return { ok: false, message: "Escribe la justificación del rechazo (mínimo 10 caracteres)." };
-  }
-  if (status === "approved" && notes.length < 10) {
-    return { ok: false, message: "Escribe la justificación de la aprobación (mínimo 10 caracteres)." };
+    return { ok: false, message: "Escribe el motivo del rechazo (mínimo 10 caracteres)." };
   }
 
   const supabase = await createClient();
@@ -33,55 +32,46 @@ export async function reviewApplication(_prev: ActionResult, formData: FormData)
   });
   if (error) return fail(error);
 
-  revalidatePath("/solicitudes");
-  revalidatePath(`/solicitudes/${applicationId}`);
-  revalidatePath("/expertos");
-  revalidatePath("/");
-  return { ok: true, message: `Postulación marcada como "${APPLICATION_STATUS[status].label}".` };
+  revalidateApplication(applicationId);
+  return {
+    ok: true,
+    message:
+      status === "approved"
+        ? "Postulación aprobada. Le enviamos el correo de bienvenida."
+        : "Postulación rechazada. El aspirante recibió el motivo por correo y en la app.",
+  };
 }
 
-/** Reabre una postulación rechazada: vuelve a "En revisión" y reemplaza la justificación del rechazo. */
-export async function reopenApplication(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+/** Rechaza un documento puntual: la postulación vuelve a Pendiente y el aspirante recibe el motivo. */
+export async function rejectDocument(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const applicationId = fieldString(formData, "application_id");
-  const notes = fieldString(formData, "notes") || "Postulación reabierta para una nueva revisión.";
-  if (!applicationId) return { ok: false, message: "Postulación no válida." };
+  const documentId = fieldString(formData, "document_id");
+  const reason = fieldString(formData, "reason");
+  if (!applicationId || !documentId) return { ok: false, message: "Documento no válido." };
+  if (reason.length < 5) return { ok: false, message: "Escribe el motivo del rechazo del documento." };
 
   const supabase = await createClient();
-  const { data: current, error: readError } = await supabase
-    .from("expert_applications")
-    .select("status")
-    .eq("id", applicationId)
-    .maybeSingle();
-  if (readError) return fail(readError);
-  if (current?.status !== "rejected") {
-    return { ok: false, message: "Solo se pueden abrir postulaciones rechazadas." };
-  }
-
-  const { error } = await supabase.rpc("review_application", {
-    p_application_id: applicationId,
-    p_status: "in_review",
-    p_notes: notes,
-  });
+  const { error } = await supabase.rpc("reject_application_document", { p_document_id: documentId, p_reason: reason });
   if (error) return fail(error);
 
-  revalidatePath("/solicitudes");
-  revalidatePath(`/solicitudes/${applicationId}`);
-  revalidatePath("/");
-  return { ok: true, message: "Postulación abierta de nuevo: quedó en revisión." };
+  revalidateApplication(applicationId);
+  return { ok: true, message: "Documento rechazado. El aspirante recibió el motivo por correo y en la app." };
 }
 
-export async function saveApplicationNotes(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+/** Reabre una postulación rechazada o vencida con un plazo nuevo de 15 días. */
+export async function reopenApplication(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const applicationId = fieldString(formData, "application_id");
   const notes = fieldString(formData, "notes");
   if (!applicationId) return { ok: false, message: "Postulación no válida." };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("expert_applications")
-    .update({ admin_notes: notes || null })
-    .eq("id", applicationId);
+  const { error } = await supabase.rpc("review_application", {
+    p_application_id: applicationId,
+    p_status: "in_review",
+    p_notes: notes || undefined,
+  });
   if (error) return fail(error);
 
-  revalidatePath(`/solicitudes/${applicationId}`);
-  return { ok: true, message: "Notas guardadas." };
+  revalidateApplication(applicationId);
+  return { ok: true, message: "Postulación abierta de nuevo con un plazo de 15 días." };
 }

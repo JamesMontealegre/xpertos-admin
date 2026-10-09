@@ -1,91 +1,54 @@
 import { ActionDialog } from "@/components/ui/dialog";
-import { Alert } from "@/components/ui/alert";
 import { Field, Textarea } from "@/components/ui/input";
 import type { ApplicationStatus } from "@/lib/labels";
-import { reopenApplication, reviewApplication } from "./actions";
+import { rejectDocument, reopenApplication, reviewApplication } from "./actions";
+
+type Application = { id: string; full_name: string; status: ApplicationStatus };
 
 /**
- * Botones "Aprobar" y "Rechazar" de una postulación. Cada uno abre un diálogo que exige una
- * justificación; queda guardada como nota del operador y el aspirante la ve en la app.
- * Una postulación rechazada solo ofrece "Abrir postulación", que la devuelve a "En revisión".
+ * Decisión sobre una postulación. Aprobar y rechazar solo aparecen En revisión (todos los requisitos
+ * completos); una rechazada o vencida solo ofrece "Abrir postulación".
  */
-export function ReviewActions({
-  application,
-  missingRequirements,
-  size = "sm",
-  layout = "row",
-}: {
-  application: { id: string; full_name: string; status: ApplicationStatus; user_id: string | null };
-  /** Requisitos pendientes (de los 6), por nombre. */
-  missingRequirements: string[];
-  size?: "sm" | "md";
-  layout?: "row" | "stack";
-}) {
-  if (application.status === "approved") return null;
-
-  const canApprove = Boolean(application.user_id);
+export function ReviewActions({ application, size = "md" }: { application: Application; size?: "sm" | "md" }) {
   const fields = { application_id: application.id };
-  const wrapper = layout === "row" ? "flex flex-wrap items-center gap-2" : "grid gap-2 [&>button]:w-full";
 
-  if (application.status === "rejected") {
+  if (application.status === "rejected" || application.status === "expired") {
     return (
-      <div className={wrapper}>
-        <ActionDialog
-          triggerLabel="Abrir postulación"
-          triggerVariant="secondary"
-          triggerSize={size}
-          title={`Abrir de nuevo la postulación de ${application.full_name}`}
-          description="Volverá al estado «En revisión» para que puedas evaluarla otra vez."
-          action={reopenApplication}
-          fields={fields}
-          submitLabel="Abrir postulación"
-          pendingLabel="Abriendo…"
-        >
-          <Field
-            label="Motivo (opcional)"
-            htmlFor={`reopen-notes-${application.id}`}
-            hint="Reemplaza la justificación del rechazo. El aspirante lo verá en la app."
-          >
-            <Textarea
-              id={`reopen-notes-${application.id}`}
-              name="notes"
-              placeholder="Ej.: el aspirante envió los documentos que faltaban."
-            />
-          </Field>
-        </ActionDialog>
-      </div>
+      <ActionDialog
+        triggerLabel="Abrir postulación"
+        triggerVariant="secondary"
+        triggerSize={size}
+        title={`Abrir de nuevo la postulación de ${application.full_name}`}
+        description="Vuelve a Pendiente con un plazo nuevo de 15 días calendario. Si ya tiene todos los requisitos, pasa directo a revisión."
+        action={reopenApplication}
+        fields={fields}
+        submitLabel="Abrir postulación"
+        pendingLabel="Abriendo…"
+      >
+        <Field label="Nota (opcional)" htmlFor={`reopen-notes-${application.id}`} hint="El aspirante la verá en la app.">
+          <Textarea id={`reopen-notes-${application.id}`} name="notes" placeholder="Ej.: el aspirante actualizó la ARL." />
+        </Field>
+      </ActionDialog>
     );
   }
 
+  if (application.status !== "in_review") return null;
+
   return (
-    <div className={wrapper}>
+    <div className="grid gap-2 [&>button]:w-full">
       <ActionDialog
         triggerLabel="Aprobar"
         triggerVariant="primary"
         triggerSize={size}
         title={`Aprobar a ${application.full_name}`}
-        description="La cuenta pasará a ser experto y podrá recibir servicios asignados."
+        description="La cuenta pasará a ser experto, podrá recibir servicios asignados y le enviaremos el correo de bienvenida."
         action={reviewApplication}
         fields={{ ...fields, status: "approved" }}
         submitLabel="Aprobar postulación"
         pendingLabel="Aprobando…"
-        disabled={!canApprove}
-        disabledReason="El aspirante aún no se registra en la app"
       >
-        {missingRequirements.length > 0 && (
-          <Alert tone="warning">
-            Faltan requisitos: {missingRequirements.join(", ")}. Puedes aprobar igualmente, pero deja constancia en la
-            justificación.
-          </Alert>
-        )}
-        <Field label="Justificación" htmlFor={`approve-notes-${application.id}`} hint="Obligatoria. El aspirante la verá en la app.">
-          <Textarea
-            id={`approve-notes-${application.id}`}
-            name="notes"
-            required
-            minLength={10}
-            placeholder="Ej.: documentos verificados, experiencia comprobada en obra civil."
-          />
+        <Field label="Nota interna (opcional)" htmlFor={`approve-notes-${application.id}`}>
+          <Textarea id={`approve-notes-${application.id}`} name="notes" placeholder="Ej.: documentos verificados con la ARL y antecedentes." />
         </Field>
       </ActionDialog>
 
@@ -93,24 +56,58 @@ export function ReviewActions({
         triggerLabel="Rechazar"
         triggerVariant="danger"
         triggerSize={size}
-        title={`Rechazar a ${application.full_name}`}
-        description="La postulación quedará rechazada y el aspirante no podrá recibir servicios."
+        title={`Rechazar la postulación de ${application.full_name}`}
+        description="Úsalo cuando algo no se alinea con el negocio. La postulación queda rechazada: el aspirante recibe el motivo por correo y en la app, y podrá presentar una nueva cuando lo resuelva. Para un detalle de un solo documento, rechaza solo ese documento."
         action={reviewApplication}
         fields={{ ...fields, status: "rejected" }}
         submitLabel="Rechazar postulación"
         submitVariant="danger"
         pendingLabel="Rechazando…"
       >
-        <Field label="Justificación" htmlFor={`reject-notes-${application.id}`} hint="Obligatoria. El aspirante la verá en la app.">
+        <Field label="Motivo del rechazo" htmlFor={`reject-notes-${application.id}`} hint="Obligatorio. El aspirante lo verá tal cual.">
           <Textarea
             id={`reject-notes-${application.id}`}
             name="notes"
             required
             minLength={10}
-            placeholder="Ej.: el certificado de antecedentes no es legible y no se pudo verificar la experiencia."
+            placeholder="Ej.: tiene antecedentes disciplinarios vigentes / al consultar la ARL no está vigente."
           />
         </Field>
       </ActionDialog>
     </div>
+  );
+}
+
+/** Rechazo de un documento puntual (borroso, vencido, incompleto). */
+export function RejectDocumentButton({
+  applicationId,
+  document,
+}: {
+  applicationId: string;
+  document: { id: string; label: string };
+}) {
+  return (
+    <ActionDialog
+      triggerLabel="Rechazar documento"
+      triggerVariant="ghost"
+      triggerSize="sm"
+      title={`Rechazar: ${document.label}`}
+      description="Solo se rechaza este documento: la postulación queda Pendiente hasta que el aspirante lo suba de nuevo. Recibe el motivo por correo y en la app."
+      action={rejectDocument}
+      fields={{ application_id: applicationId, document_id: document.id }}
+      submitLabel="Rechazar documento"
+      submitVariant="danger"
+      pendingLabel="Rechazando…"
+    >
+      <Field label="Motivo" htmlFor={`doc-reason-${document.id}`} hint="Obligatorio. El aspirante lo verá tal cual.">
+        <Textarea
+          id={`doc-reason-${document.id}`}
+          name="reason"
+          required
+          minLength={5}
+          placeholder="Ej.: la imagen está borrosa y no se leen los datos."
+        />
+      </Field>
+    </ActionDialog>
   );
 }

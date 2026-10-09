@@ -42,6 +42,10 @@ export type Database = {
           id: string
           kind: Database["public"]["Enums"]["document_kind"]
           mime_type: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
           storage_path: string
         }
         ComputedFields: never
@@ -52,6 +56,10 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["document_kind"]
           mime_type?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
           storage_path: string
         }
         Update: {
@@ -61,6 +69,10 @@ export type Database = {
           id?: string
           kind?: Database["public"]["Enums"]["document_kind"]
           mime_type?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
           storage_path?: string
         }
         Relationships: [
@@ -69,6 +81,13 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "expert_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "application_documents_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -295,6 +314,7 @@ export type Database = {
           created_at: string
           email: string
           experience_years: number | null
+          expires_at: string
           full_name: string
           id: string
           payout_account: string | null
@@ -315,6 +335,7 @@ export type Database = {
           created_at?: string
           email: string
           experience_years?: number | null
+          expires_at?: string
           full_name: string
           id?: string
           payout_account?: string | null
@@ -334,6 +355,7 @@ export type Database = {
           created_at?: string
           email?: string
           experience_years?: number | null
+          expires_at?: string
           full_name?: string
           id?: string
           payout_account?: string | null
@@ -537,6 +559,75 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      notifications: {
+        Row: {
+          application_id: string | null
+          body: string | null
+          created_at: string
+          id: string
+          kind: string
+          link: string | null
+          read_at: string | null
+          service_id: string | null
+          title: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          application_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          link?: string | null
+          read_at?: string | null
+          service_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          application_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          link?: string | null
+          read_at?: string | null
+          service_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "expert_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "notifications_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_accounts: {
         Row: {
@@ -1424,6 +1515,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      _notification_text: {
+        Args: { p_audience: string; p_data: Json; p_template: string }
+        Returns: {
+          body: string
+          link: string
+          title: string
+        }[]
+      }
       _payment_accounts_json: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -1476,6 +1575,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      application_missing_requirements: {
+        Args: { p_application_id: string }
+        Returns: string[]
+      }
       approve_application: {
         Args: { p_application_id: string; p_notes?: string }
         Returns: {
@@ -1486,6 +1589,7 @@ export type Database = {
           created_at: string
           email: string
           experience_years: number | null
+          expires_at: string
           full_name: string
           id: string
           payout_account: string | null
@@ -1680,6 +1784,10 @@ export type Database = {
         Args: { p_only_if_due?: boolean }
         Returns: number
       }
+      document_kind_label: {
+        Args: { p: Database["public"]["Enums"]["document_kind"] }
+        Returns: string
+      }
       expert_can_choose_frequency: {
         Args: { p_expert_id: string }
         Returns: boolean
@@ -1688,7 +1796,12 @@ export type Database = {
         Args: { p_expert_id: string }
         Returns: number
       }
+      expire_stale_applications: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       fmt_cop: { Args: { p: number }; Returns: string }
+      fmt_date_es: { Args: { p: string }; Returns: string }
       fmt_qty: { Args: { p: number }; Returns: string }
       generate_contract: {
         Args: { p_extra_terms?: string; p_service_id: string }
@@ -1716,6 +1829,10 @@ export type Database = {
       is_business_day: { Args: { p_day: string }; Returns: boolean }
       is_service_party: { Args: { p_service_id: string }; Returns: boolean }
       is_super_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
+      mark_all_notifications_read: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       open_next_stage: { Args: { p_service_id: string }; Returns: undefined }
       payout_frequency_label: {
         Args: { p: Database["public"]["Enums"]["payout_frequency"] }
@@ -1726,6 +1843,11 @@ export type Database = {
         Returns: string
       }
       promote_to_admin: { Args: { p_email: string }; Returns: string }
+      reapply_application: { Args: Record<PropertyKey, never>; Returns: string }
+      reject_application_document: {
+        Args: { p_document_id: string; p_reason: string }
+        Returns: undefined
+      }
       retry_email: { Args: { p_id: string }; Returns: undefined }
       return_quote: {
         Args: { p_notes: string; p_service_id: string }
@@ -1769,6 +1891,7 @@ export type Database = {
           created_at: string
           email: string
           experience_years: number | null
+          expires_at: string
           full_name: string
           id: string
           payout_account: string | null
@@ -1906,6 +2029,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      sync_application_status: {
+        Args: { p_application_id: string }
+        Returns: undefined
+      }
       today_co: { Args: Record<PropertyKey, never>; Returns: string }
       try_uuid: { Args: { p: string }; Returns: string }
     }
@@ -1916,6 +2043,7 @@ export type Database = {
         | "needs_info"
         | "approved"
         | "rejected"
+        | "expired"
       contract_status: "draft" | "pending_signatures" | "signed" | "void"
       document_kind:
         | "id_front"
@@ -2095,6 +2223,7 @@ export const Constants = {
         "needs_info",
         "approved",
         "rejected",
+        "expired",
       ],
       contract_status: ["draft", "pending_signatures", "signed", "void"],
       document_kind: [

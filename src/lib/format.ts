@@ -107,3 +107,14 @@ export function formatDuration(minutes: number | null | undefined) {
 export function businessDaysLabel(n: number) {
   return n === 1 ? "1 día hábil" : `${n} días hábiles`;
 }
+
+const bogotaDay = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota" });
+
+/** Días calendario (hora de Colombia) que faltan hasta `value`: 0 si vence hoy o ya pasó. */
+export function daysUntil(value: string | null | undefined) {
+  if (!value) return null;
+  const target = new Date(value);
+  if (Number.isNaN(target.getTime())) return null;
+  const diff = Date.parse(bogotaDay.format(target)) - Date.parse(bogotaDay.format(new Date()));
+  return Math.max(0, Math.round(diff / 86_400_000));
+}

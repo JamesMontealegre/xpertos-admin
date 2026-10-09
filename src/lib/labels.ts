@@ -105,15 +105,14 @@ export const APPLICATION_STATUS: Record<ApplicationStatus, { label: string; tone
   needs_info: { label: "Falta información", tone: "orange" },
   approved: { label: "Aprobada", tone: "green" },
   rejected: { label: "Rechazada", tone: "red" },
+  expired: { label: "Vencida", tone: "slate" },
 };
 
-export const APPLICATION_STATUS_ORDER: ApplicationStatus[] = [
-  "pending",
-  "in_review",
-  "needs_info",
-  "approved",
-  "rejected",
-];
+/** Pestañas de la lista ("Falta información" ya no se usa: el agente rechaza documentos puntuales). */
+export const APPLICATION_STATUS_ORDER: ApplicationStatus[] = ["pending", "in_review", "approved", "rejected", "expired"];
+
+/** Días calendario que una postulación puede estar abierta antes de vencer. */
+export const APPLICATION_WINDOW_DAYS = 15;
 
 export const PAYMENT_STATUS: Record<PaymentStatus, { label: string; tone: Tone }> = {
   submitted: { label: "Por verificar", tone: "amber" },
@@ -266,6 +265,8 @@ export const EMAIL_TEMPLATE_LABEL: Record<string, string> = {
   service_cancelled: "Servicio cancelado",
   payout_sent: "Pago al experto",
   application_received: "Postulación recibida",
+  application_document_rejected: "Documento rechazado",
+  application_expired: "Postulación vencida",
   application_credentials: "Acceso del aspirante",
   application_approved: "Postulación aprobada",
   application_rejected: "Postulación rechazada",
