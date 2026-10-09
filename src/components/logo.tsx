@@ -6,11 +6,13 @@ const SITE_NAME = "Xpertos";
  * Las dos versiones del logo de Xpertos (SVG en `public/brand`):
  * - `wordmark`: solo XPERTOS, para encabezados y barras.
  * - `full`: logo completo con la casa y el lema "servicios a tu medida".
+ * - `icon`: solo la X (menú colapsado).
  * El favicon usa solo la X (`src/app/icon.svg`).
  */
 const VARIANTS = {
   wordmark: { src: "/brand/xpertos-wordmark.svg", ratio: 1177 / 255, alt: SITE_NAME },
   full: { src: "/brand/xpertos-logo.svg", ratio: 1214 / 930, alt: `${SITE_NAME}, servicios a tu medida` },
+  icon: { src: "/brand/xpertos-icon.svg", ratio: 1, alt: SITE_NAME },
 } as const;
 
 export function Logo({

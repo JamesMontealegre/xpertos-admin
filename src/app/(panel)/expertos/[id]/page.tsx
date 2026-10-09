@@ -46,7 +46,7 @@ export default async function ExpertDetailPage(props: PageProps<"/expertos/[id]"
         description={`Aprobado el ${formatDateTime(expert.approved_at)}${expert.approver?.full_name ? ` por ${expert.approver.full_name}` : ""}`}
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
         <div className="space-y-6 lg:col-span-2">
           <Card>
             <CardHeader title="Perfil" />

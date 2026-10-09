@@ -6,12 +6,22 @@ import { SERVICE_STATUS, SERVICE_STATUS_ORDER, isServiceStatus } from "@/lib/lab
 import { ServicePhaseBarCompact } from "@/components/service-phase-bar";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { EmptyRow, Table, TBody, Td, THead, Tr } from "@/components/ui/table";
+import { EmptyRow, Table, TBody, Td, THead, Tr, type Column } from "@/components/ui/table";
 import { StatusTabs } from "@/components/status-tabs";
 
 export const metadata: Metadata = { title: "Servicios" };
 
-const COLUMNS = ["Título", "Categoría", "Cliente", "Experto", "Ciudad", "Estado", "Total", "Creado"];
+// Bajo 1440 px, categoría, ciudad y fecha van dentro de la primera columna.
+const COLUMNS: Column[] = [
+  { label: "Servicio" },
+  { label: "Categoría", className: "hidden w-[9rem] min-[1440px]:table-cell" },
+  { label: "Cliente", className: "w-[11rem]" },
+  { label: "Experto", className: "w-[11rem]" },
+  { label: "Ciudad", className: "hidden w-[8rem] min-[1440px]:table-cell" },
+  { label: "Estado", className: "w-[11rem]" },
+  { label: "Total", className: "w-[8rem]" },
+  { label: "Creado", className: "hidden w-[7rem] min-[1440px]:table-cell" },
+];
 
 export default async function ServicesPage(props: PageProps<"/servicios">) {
   const searchParams = await props.searchParams;
@@ -66,7 +76,7 @@ export default async function ServicesPage(props: PageProps<"/servicios">) {
       </div>
 
       <Card>
-        <Table>
+        <Table fit stack="lg">
           <THead columns={COLUMNS} />
           <TBody>
             {error && <EmptyRow colSpan={COLUMNS.length}>No fue posible cargar los servicios: {error.message}</EmptyRow>}
@@ -77,22 +87,28 @@ export default async function ServicesPage(props: PageProps<"/servicios">) {
             )}
             {(services ?? []).map((s) => (
               <Tr key={s.id}>
-                <Td>
+                <Td className="break-words">
                   <Link href={`/servicios/${s.id}`} className="font-medium text-primary hover:underline">
                     {s.title}
                   </Link>
+                  <p className="text-xs text-slate-500 min-[1440px]:hidden">
+                    {[s.category?.name, s.city].filter(Boolean).join(" · ") || "—"}
+                  </p>
+                  <p className="text-xs text-slate-400 min-[1440px]:hidden">Creado el {formatDate(s.created_at)}</p>
                 </Td>
-                <Td>{s.category?.name ?? "—"}</Td>
-                <Td>{s.client?.full_name || "—"}</Td>
-                <Td>{s.expert_id ? expertName.get(s.expert_id) ?? "Experto" : <span className="text-slate-400">Sin asignar</span>}</Td>
-                <Td>{s.city ?? "—"}</Td>
+                <Td className="hidden min-[1440px]:table-cell">{s.category?.name ?? "—"}</Td>
+                <Td className="break-words">{s.client?.full_name || "—"}</Td>
+                <Td className="break-words">
+                  {s.expert_id ? expertName.get(s.expert_id) ?? "Experto" : <span className="text-slate-400">Sin asignar</span>}
+                </Td>
+                <Td className="hidden min-[1440px]:table-cell">{s.city ?? "—"}</Td>
                 <Td>
                   <ServicePhaseBarCompact status={s.status} />
                 </Td>
                 <Td className="whitespace-nowrap">
                   {s.estimated_price != null ? formatCOP(s.estimated_price) : <span className="text-slate-400">—</span>}
                 </Td>
-                <Td className="whitespace-nowrap text-slate-600">{formatDate(s.created_at)}</Td>
+                <Td className="hidden whitespace-nowrap text-slate-600 min-[1440px]:table-cell">{formatDate(s.created_at)}</Td>
               </Tr>
             ))}
           </TBody>

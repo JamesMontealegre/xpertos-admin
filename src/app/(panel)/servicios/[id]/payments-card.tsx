@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { ActionButton } from "@/components/ui/action-form";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -43,11 +42,8 @@ export function PaymentsCard({
       {status === "pending_payment" && (
         <CardBody className="space-y-2 border-b border-border">
           <Alert tone="info">
-            Antes de verificar, revisa en el banco que la transacción haya llegado a una de las{" "}
-            <Link href="/configuracion/cuentas" className="font-medium text-primary hover:underline">
-              cuentas de recaudo
-            </Link>{" "}
-            por el valor del cobro. Al verificar, el servicio pasa solo a Programado y se fija la fecha de inicio.
+            Antes de verificar, revisa en el banco que la transacción haya llegado a una de las cuentas de recaudo de
+            Xpertos por el valor del cobro. Al verificar, el servicio pasa solo a Programado y se fija la fecha de inicio.
           </Alert>
           {awaitingProof && <p className="text-sm text-slate-500">El cliente aún no ha subido un comprobante por verificar.</p>}
         </CardBody>

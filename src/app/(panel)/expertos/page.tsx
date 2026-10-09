@@ -6,11 +6,21 @@ import { ACTIVE_SERVICE_STATUSES, payoutMethodLabel } from "@/lib/labels";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { EmptyRow, Table, TBody, Td, THead, Tr } from "@/components/ui/table";
+import { EmptyRow, Table, TBody, Td, THead, Tr, type Column } from "@/components/ui/table";
 
 export const metadata: Metadata = { title: "Expertos" };
 
-const COLUMNS = ["Nombre", "Ciudad", "Categorías", "Calificación", "Disponible", "Servicios activos", "Medio de pago", "Aprobado"];
+// Bajo 1440 px, ciudad y fecha de aprobación van dentro de la primera columna.
+const COLUMNS: Column[] = [
+  { label: "Experto" },
+  { label: "Ciudad", className: "hidden w-[8rem] min-[1440px]:table-cell" },
+  { label: "Categorías", className: "w-[13rem]" },
+  { label: "Calificación", className: "w-[7.5rem]" },
+  { label: "Disponible", className: "w-[6.5rem]" },
+  { label: "Activos", className: "w-[6rem]" },
+  { label: "Medio de pago", className: "w-[9rem]" },
+  { label: "Aprobado", className: "hidden w-[7rem] min-[1440px]:table-cell" },
+];
 
 export default async function ExpertsPage() {
   const { supabase } = await requireAdmin();
@@ -34,7 +44,7 @@ export default async function ExpertsPage() {
     <>
       <PageHeader title="Expertos" description="Expertos aprobados y su disponibilidad." />
       <Card>
-        <Table>
+        <Table fit stack="lg">
           <THead columns={COLUMNS} />
           <TBody>
             {error && <EmptyRow colSpan={COLUMNS.length}>No fue posible cargar los expertos: {error.message}</EmptyRow>}
@@ -43,15 +53,18 @@ export default async function ExpertsPage() {
             )}
             {(experts ?? []).map((e) => (
               <Tr key={e.user_id}>
-                <Td>
+                <Td className="break-words">
                   <Link href={`/expertos/${e.user_id}`} className="font-medium text-primary hover:underline">
                     {e.profile?.full_name || "Experto"}
                   </Link>
                   {e.profile?.email && <span className="block text-xs text-slate-500">{e.profile.email}</span>}
+                  <span className="block text-xs text-slate-400 min-[1440px]:hidden">
+                    {[e.profile?.city, `aprobado el ${formatDate(e.approved_at)}`].filter(Boolean).join(" · ")}
+                  </span>
                 </Td>
-                <Td>{e.profile?.city ?? "—"}</Td>
+                <Td className="hidden min-[1440px]:table-cell">{e.profile?.city ?? "—"}</Td>
                 <Td>
-                  <div className="flex max-w-xs flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1">
                     {e.category_ids.length === 0 && <span className="text-slate-400">—</span>}
                     {e.category_ids.map((id) => (
                       <Badge key={id}>{categoryName.get(id) ?? "Categoría"}</Badge>
@@ -67,9 +80,7 @@ export default async function ExpertsPage() {
                 <Td className="whitespace-nowrap">
                   {e.payout_method ? payoutMethodLabel(e.payout_method) : <span className="text-slate-400">Sin definir</span>}
                 </Td>
-                <Td className="whitespace-nowrap text-slate-600">
-                  {formatDate(e.approved_at)}
-                </Td>
+                <Td className="hidden whitespace-nowrap text-slate-600 min-[1440px]:table-cell">{formatDate(e.approved_at)}</Td>
               </Tr>
             ))}
           </TBody>

@@ -104,7 +104,7 @@ export default async function ApplicationsPage(props: PageProps<"/solicitudes">)
       </div>
 
       <Card>
-        <Table fit>
+        <Table fit stack="lg">
           <THead columns={COLUMNS} />
           <TBody>
             {error && (

@@ -3,34 +3,37 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/components/ui/cn";
+import { ApplicationsIcon, DashboardIcon, ExpertsIcon, MailIcon, ServicesIcon } from "@/components/icons";
 
 const ITEMS = [
-  { href: "/", label: "Dashboard" },
-  { href: "/solicitudes", label: "Solicitudes" },
-  { href: "/servicios", label: "Servicios" },
-  { href: "/expertos", label: "Expertos" },
-  { href: "/configuracion/correos", label: "Correos" },
-  // Configuración: solo el superadmin (no es parte de la operación de los agentes).
-  { href: "/configuracion/cuentas", label: "Cuentas de recaudo", superAdminOnly: true },
+  { href: "/", label: "Dashboard", Icon: DashboardIcon },
+  { href: "/solicitudes", label: "Solicitudes", Icon: ApplicationsIcon },
+  { href: "/servicios", label: "Servicios", Icon: ServicesIcon },
+  { href: "/expertos", label: "Expertos", Icon: ExpertsIcon },
+  { href: "/configuracion/correos", label: "Correos", Icon: MailIcon },
 ];
 
-export function SidebarNav({ isSuperAdmin = false }: { isSuperAdmin?: boolean }) {
+/** Menú del panel. Colapsado muestra solo los íconos (el nombre queda como ayuda emergente). */
+export function SidebarNav({ collapsed = false }: { collapsed?: boolean }) {
   const pathname = usePathname();
   return (
-    <nav aria-label="Secciones" className="flex gap-1 overflow-x-auto lg:flex-col">
-      {ITEMS.filter((item) => isSuperAdmin || !item.superAdminOnly).map((item) => {
-        const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+    <nav aria-label="Secciones" className="flex flex-col gap-1">
+      {ITEMS.map(({ href, label, Icon }) => {
+        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
         return (
           <Link
-            key={item.href}
-            href={item.href}
+            key={href}
+            href={href}
             aria-current={active ? "page" : undefined}
+            title={collapsed ? label : undefined}
             className={cn(
-              "rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
+              "flex items-center gap-3 rounded-xl py-2 text-sm font-medium transition-colors",
+              collapsed ? "justify-center px-2" : "px-3",
               active ? "bg-primary text-white" : "text-slate-600 hover:bg-slate-100 hover:text-foreground",
             )}
           >
-            {item.label}
+            <Icon className="size-5 shrink-0" />
+            <span className={cn("truncate", collapsed && "sr-only")}>{label}</span>
           </Link>
         );
       })}

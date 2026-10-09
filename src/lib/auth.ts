@@ -18,10 +18,3 @@ export async function requireAdmin() {
 
   return { supabase, user, profile };
 }
-
-/** Páginas de configuración: solo el superadmin. Un agente vuelve al dashboard. */
-export async function requireSuperAdmin() {
-  const ctx = await requireAdmin();
-  if (!ctx.profile.is_super_admin) redirect("/");
-  return ctx;
-}

@@ -601,7 +601,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
         </CardBody>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
         <div className="min-w-0 space-y-6 lg:col-span-2">
           {ordered.map((section) => (
             <div key={section.key}>{section.node}</div>

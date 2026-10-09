@@ -80,7 +80,7 @@ export default async function EmailsPage(props: PageProps<"/configuracion/correo
       </div>
 
       <Card>
-        <Table fit>
+        <Table fit stack="lg">
           <THead columns={COLUMNS} />
           <TBody>
             {error && <EmptyRow colSpan={COLUMNS.length}>No fue posible cargar los correos: {error.message}</EmptyRow>}

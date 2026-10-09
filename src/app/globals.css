@@ -118,3 +118,117 @@ body {
     animation: step-beat 1.8s ease-in-out infinite;
   }
 }
+
+/* ---------------------------------------------------------------------------------------------
+   Tablas apiladas cuando no caben (components/ui/table.tsx, prop `stack`). Se mide el ancho del
+   contenedor de la tabla: cada fila pasa a ser una tarjeta, el primer dato hace de título y los demás
+   llevan el nombre de su columna, en 1, 2 o 3 columnas según el espacio.
+   --------------------------------------------------------------------------------------------- */
+.xp-table-wrap {
+  container-type: inline-size;
+}
+
+@container (max-width: 599.98px) {
+  .xp-stack-md {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+  }
+  .xp-stack-md > thead {
+    display: none;
+  }
+  .xp-stack-md > tbody {
+    display: block;
+    width: 100%;
+  }
+  .xp-stack-md > tbody > tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem 1.5rem;
+    padding: 0.875rem 1rem;
+  }
+  .xp-stack-md > tbody > tr > td {
+    padding: 0;
+  }
+  .xp-stack-md > tbody > tr > td:not(.hidden) {
+    display: block;
+    min-width: 0;
+    white-space: normal;
+  }
+  .xp-stack-md > tbody > tr > td:not([colspan]) {
+    text-align: left;
+  }
+  .xp-stack-md > tbody > tr > td:first-child,
+  .xp-stack-md > tbody > tr > td[colspan] {
+    grid-column: 1 / -1;
+  }
+  .xp-stack-md > tbody > tr > td[data-label]:not([data-label=""]):not(:first-child)::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.125rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgb(100 116 139);
+  }
+}
+
+@container (max-width: 899.98px) {
+  .xp-stack-lg {
+    display: block;
+    width: 100%;
+    min-width: 0 !important;
+  }
+  .xp-stack-lg > thead {
+    display: none;
+  }
+  .xp-stack-lg > tbody {
+    display: block;
+    width: 100%;
+  }
+  .xp-stack-lg > tbody > tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem 1.5rem;
+    padding: 0.875rem 1rem;
+  }
+  .xp-stack-lg > tbody > tr > td {
+    padding: 0;
+  }
+  .xp-stack-lg > tbody > tr > td:not(.hidden) {
+    display: block;
+    min-width: 0;
+    white-space: normal;
+  }
+  .xp-stack-lg > tbody > tr > td:not([colspan]) {
+    text-align: left;
+  }
+  .xp-stack-lg > tbody > tr > td:first-child,
+  .xp-stack-lg > tbody > tr > td[colspan] {
+    grid-column: 1 / -1;
+  }
+  .xp-stack-lg > tbody > tr > td[data-label]:not([data-label=""]):not(:first-child)::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.125rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgb(100 116 139);
+  }
+}
+
+@container (min-width: 480px) and (max-width: 899.98px) {
+  .xp-stack-md > tbody > tr,
+  .xp-stack-lg > tbody > tr {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 700px) and (max-width: 899.98px) {
+  .xp-stack-lg > tbody > tr {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

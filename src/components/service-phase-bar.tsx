@@ -53,39 +53,54 @@ export function ServicePhaseBar({
   const states = stepStates(status, cancelledFrom);
 
   return (
-    <div className="-mx-1 overflow-x-auto pt-4 pb-1">
-      <ol className="grid min-w-[34rem] grid-cols-8" aria-label="Avance del servicio">
+    // Celular: lista vertical. Desde sm: barra horizontal de 8 pasos (con scroll si no cabe).
+    <div className="sm:-mx-1 sm:overflow-x-auto sm:pt-4 sm:pb-1">
+      <ol className="flex flex-col pt-1 sm:grid sm:min-w-[34rem] sm:grid-cols-8 sm:pt-0" aria-label="Avance del servicio">
         {FLOW.map((step, i) => {
           const state = states[i];
+          const next = states[i + 1];
           const isExecutionStep = step === "in_progress";
           const label = isExecutionStep && state === "paused" ? "En pausa" : FLOW_LABEL[step];
           const active = state === "current" || state === "paused" || state === "cancelled";
           const isLastDone = status === "completed" && i === FLOW.length - 1;
           const note = state === "cancelled" ? hint || "Cancelado en este paso" : active || isLastDone ? hint : null;
+          const reached = (s: StepState | undefined) => s !== undefined && s !== "upcoming" && s !== "cancelled";
 
           return (
-            <li key={step} className="relative flex flex-col items-center px-1 text-center" aria-current={active ? "step" : undefined}>
+            <li
+              key={step}
+              className="relative flex items-start gap-3 pb-4 last:pb-0 sm:flex-col sm:items-center sm:gap-0 sm:px-1 sm:pb-0 sm:text-center"
+              aria-current={active ? "step" : undefined}
+            >
+              {/* Línea hacia el paso anterior (horizontal, desde sm). */}
               {i > 0 && (
                 <span
                   aria-hidden
                   className={cn(
-                    "absolute right-1/2 top-4 h-0.5 w-full -translate-y-1/2",
-                    state === "upcoming" || state === "cancelled" ? "bg-slate-200" : "bg-primary",
+                    "absolute right-1/2 top-4 hidden h-0.5 w-full -translate-y-1/2 sm:block",
+                    reached(state) ? "bg-primary" : "bg-slate-200",
                   )}
+                />
+              )}
+              {/* Línea hacia el paso siguiente (vertical, en celular). */}
+              {i < FLOW.length - 1 && (
+                <span
+                  aria-hidden
+                  className={cn("absolute bottom-0 left-4 top-8 w-0.5 -translate-x-1/2 sm:hidden", reached(next) ? "bg-primary" : "bg-slate-200")}
                 />
               )}
               {(state === "current" || state === "paused") && (
                 <span
                   aria-hidden
                   className={cn(
-                    "step-pulse absolute top-0 left-1/2 z-0 -ml-4 size-8 rounded-full",
+                    "step-pulse absolute top-0 left-0 z-0 size-8 rounded-full sm:left-1/2 sm:-ml-4",
                     state === "current" ? "bg-primary" : "bg-amber-500",
                   )}
                 />
               )}
               <span
                 className={cn(
-                  "relative z-10 flex size-8 items-center justify-center rounded-full text-sm font-semibold",
+                  "relative z-10 flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
                   (state === "current" || state === "paused") && "step-beat",
                   state === "done" && "bg-primary text-white",
                   state === "current" && "bg-primary text-white ring-4 ring-primary/20",
@@ -96,27 +111,29 @@ export function ServicePhaseBar({
               >
                 {state === "done" ? <CheckIcon /> : state === "paused" ? <PauseIcon /> : state === "cancelled" ? <CrossIcon /> : i + 1}
               </span>
-              <span
-                className={cn(
-                  "mt-2 text-xs font-medium leading-tight xl:text-sm",
-                  state === "upcoming" ? "text-slate-400" : "text-slate-800",
-                  state === "current" && "text-primary",
-                  state === "paused" && "text-amber-700",
-                  state === "cancelled" && "text-red-700",
-                )}
-              >
-                {label}
-              </span>
-              {note && (
+              <span className="flex min-w-0 flex-col pt-1.5 sm:items-center sm:pt-0">
                 <span
                   className={cn(
-                    "mt-1 max-w-[9.5rem] text-xs leading-snug",
-                    state === "paused" ? "text-amber-700" : state === "cancelled" ? "text-red-700" : "text-slate-500",
+                    "text-sm font-medium leading-tight sm:mt-2 sm:text-xs xl:text-sm",
+                    state === "upcoming" ? "text-slate-400" : "text-slate-800",
+                    state === "current" && "text-primary",
+                    state === "paused" && "text-amber-700",
+                    state === "cancelled" && "text-red-700",
                   )}
                 >
-                  {note}
+                  {label}
                 </span>
-              )}
+                {note && (
+                  <span
+                    className={cn(
+                      "mt-1 text-xs leading-snug sm:max-w-[9.5rem]",
+                      state === "paused" ? "text-amber-700" : state === "cancelled" ? "text-red-700" : "text-slate-500",
+                    )}
+                  >
+                    {note}
+                  </span>
+                )}
+              </span>
             </li>
           );
         })}
