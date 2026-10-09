@@ -33,7 +33,7 @@ export default async function LoginPage(props: PageProps<"/login">) {
           )}
           <ActionForm action={login} className="space-y-4">
             <Field label="Correo electrónico" htmlFor="email">
-              <Input id="email" name="email" type="email" autoComplete="email" required placeholder="operador@xpertos.co" />
+              <Input id="email" name="email" type="email" autoComplete="email" required placeholder="operador@xpertos.com.co" />
             </Field>
             <Field label="Contraseña" htmlFor="password">
               <Input id="password" name="password" type="password" autoComplete="current-password" required />
