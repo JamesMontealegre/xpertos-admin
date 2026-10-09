@@ -105,6 +105,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     { data: workLogs },
     { data: payouts },
     { data: candidates },
+    { data: categoryRows },
     { data: holidays },
   ] = await Promise.all([
     service.expert_id
@@ -147,11 +148,16 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
       ? supabase
           .from("expert_profiles")
           .select(
-            "user_id, rating_avg, rating_count, is_available, payout_method, payout_account, profile:profiles!expert_profiles_user_id_fkey(full_name, city), availability:expert_availability(weekday, start_time, end_time)",
+            "user_id, category_ids, rating_avg, rating_count, is_available, payout_method, payout_account, profile:profiles!expert_profiles_user_id_fkey!inner(full_name, city, role), availability:expert_availability(weekday, start_time, end_time)",
           )
-          .contains("category_ids", [service.category_id])
-          .eq("is_available", true)
+          // Solo expertos aprobados (un admin puede tener perfil de experto de pruebas).
+          .eq("profile.role", "expert")
+          // Todos los disponibles (el agente filtra por actividad) y el experto ya asignado aunque no lo esté.
+          .or(service.expert_id ? `is_available.eq.true,user_id.eq.${service.expert_id}` : "is_available.eq.true")
           .order("rating_avg", { ascending: false })
+      : Promise.resolve({ data: null }),
+    assigning
+      ? supabase.from("service_categories").select("id, name").eq("active", true).order("sort_order")
       : Promise.resolve({ data: null }),
     service.start_date
       ? supabase.from("holidays").select("day").gte("day", service.start_date).lte("day", today)
@@ -194,6 +200,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
   const expertOptions: ExpertOption[] = (candidates ?? []).map((c) => ({
     id: c.user_id,
     full_name: c.profile?.full_name || "Experto",
+    category_ids: c.category_ids,
     city: c.profile?.city ?? null,
     rating_avg: Number(c.rating_avg),
     rating_count: c.rating_count,
@@ -343,12 +350,15 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
           <div id="asignacion" className="scroll-mt-6" />
           <CardHeader
             title={status === "assigned" ? "Reasignar experto" : "Asignar experto"}
-            description="Expertos disponibles con la categoría del servicio. El experto elegido arma la cotización desde su app."
+            description="Filtra por actividad, elige al experto y revisa su detalle. El experto elegido arma la cotización desde su app."
           />
           <CardBody>
             <AssignForm
               serviceId={service.id}
               experts={expertOptions}
+              categories={categoryRows ?? []}
+              serviceCategoryId={service.category_id}
+              serviceCity={service.city}
               currentExpertId={service.expert_id}
               defaultScheduledAt={toLocalInput(service.scheduled_at)}
             />
