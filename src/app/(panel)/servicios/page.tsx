@@ -20,7 +20,7 @@ const COLUMNS: Column[] = [
   { label: "Ciudad", className: "hidden w-[8rem] min-[1440px]:table-cell" },
   { label: "Estado", className: "w-[11rem]" },
   { label: "Total", className: "w-[8rem]" },
-  { label: "Creado", className: "hidden w-[7rem] min-[1440px]:table-cell" },
+  { label: "Creado", className: "hidden w-[9.5rem] min-[1440px]:table-cell" },
 ];
 
 export default async function ServicesPage(props: PageProps<"/servicios">) {

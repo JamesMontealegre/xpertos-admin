@@ -18,8 +18,8 @@ const COLUMNS: Column[] = [
   { label: "Calificación", className: "w-[7.5rem]" },
   { label: "Disponible", className: "w-[6.5rem]" },
   { label: "Activos", className: "w-[6rem]" },
-  { label: "Medio de pago", className: "w-[9rem]" },
-  { label: "Aprobado", className: "hidden w-[7rem] min-[1440px]:table-cell" },
+  { label: "Medio de pago", className: "w-[9.5rem]" },
+  { label: "Aprobado", className: "hidden w-[9.5rem] min-[1440px]:table-cell" },
 ];
 
 export default async function ExpertsPage() {
@@ -77,7 +77,7 @@ export default async function ExpertsPage() {
                 </Td>
                 <Td>{e.is_available ? <Badge tone="green">Sí</Badge> : <Badge tone="slate">No</Badge>}</Td>
                 <Td>{activeCount[e.user_id] ?? 0}</Td>
-                <Td className="whitespace-nowrap">
+                <Td>
                   {e.payout_method ? payoutMethodLabel(e.payout_method) : <span className="text-slate-400">Sin definir</span>}
                 </Td>
                 <Td className="hidden whitespace-nowrap text-slate-600 min-[1440px]:table-cell">{formatDate(e.approved_at)}</Td>
