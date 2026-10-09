@@ -128,7 +128,8 @@ export function QuoteReviewForm({
           </div>
           {hasMaterials && (
             <p className="text-xs text-slate-500">
-              Si el cliente elige todo incluido, se le suman {formatCOP(materialsValue)} para comprar los materiales.
+              Los materiales no hacen parte del pago al experto: si el cliente elige todo incluido, Xpertos los compra y
+              los lleva al lugar del servicio.
             </p>
           )}
         </div>

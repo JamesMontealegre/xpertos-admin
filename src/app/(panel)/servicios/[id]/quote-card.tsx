@@ -20,14 +20,12 @@ export type QuoteWithLines = QuoteRow & { items: ItemRow[]; materials: MaterialR
 const qty = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 });
 
 /**
- * Neto estimado del experto: mano de obra aprobada menos comisión, más materiales si el cliente eligió
- * todo incluido. Mientras el cliente no elige (sin total) no hay neto.
+ * Neto estimado del experto: mano de obra aprobada menos la comisión. Los materiales nunca hacen parte
+ * de su pago (en todo incluido los compra Xpertos). Sin mano de obra aprobada no hay neto.
  */
 export function expertNetEstimate(quote: QuoteRow | null, commissionPct: number) {
-  if (!quote || quote.approved_labor_total == null || quote.total == null) return null;
-  const labor = Number(quote.approved_labor_total);
-  const materials = quote.pricing_mode === "all_inclusive" ? Number(quote.materials_total) : 0;
-  return Math.round(labor * (1 - commissionPct / 100) + materials);
+  if (!quote || quote.approved_labor_total == null) return null;
+  return Math.round(Number(quote.approved_labor_total) * (1 - commissionPct / 100));
 }
 
 /**
@@ -166,7 +164,7 @@ export function QuoteCard({
               ·{" "}
               {chosen
                 ? allInclusive
-                  ? "los cubre Xpertos (todo incluido)"
+                  ? "los compra Xpertos y los lleva al lugar del servicio (todo incluido)"
                   : "los compra el cliente"
                 : "el cliente decide si los compra o si van por cuenta de Xpertos"}
             </span>
@@ -280,13 +278,19 @@ export function QuoteCard({
               columns={3}
               items={[
                 { label: "Mano de obra aprobada", value: formatCOP(quote.approved_labor_total) },
-                { label: "Materiales", value: allInclusive ? formatCOP(quote.materials_total) : "Los compra el cliente" },
+                { label: "Materiales", value: allInclusive ? `${formatCOP(quote.materials_total)} · los compra Xpertos` : "Los compra el cliente" },
                 { label: "Total del cliente", value: <span className="font-semibold text-primary">{formatCOP(quote.total)}</span> },
                 { label: "Comisión", value: `${commissionPct} %` },
                 { label: "Neto estimado del experto", value: formatCOP(net) },
                 { label: "Aprobada", value: formatDateTime(quote.reviewed_at) },
               ]}
             />
+            {allInclusive && (
+              <Alert tone="warning" className="mt-4">
+                Todo incluido: la central compra los materiales de la lista y gestiona su llegada al lugar del servicio
+                antes de la fecha de inicio. El experto solo responde por la mano de obra.
+              </Alert>
+            )}
             {quote.admin_notes && (
               <p className="mt-4 text-sm text-slate-600">
                 <span className="font-medium text-slate-700">Notas: </span>
