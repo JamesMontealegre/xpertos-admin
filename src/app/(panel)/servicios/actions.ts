@@ -140,19 +140,22 @@ export async function approveQuote(_prev: ActionResult, formData: FormData): Pro
   const serviceId = fieldString(formData, "service_id");
   const hasMaterials = fieldString(formData, "has_materials") === "1";
   const labor = parseAmount(fieldString(formData, "labor_total"));
-  const materials = hasMaterials ? parseAmount(fieldString(formData, "materials_total")) : 0;
+  // Valor unitario de cada material (campos material_price:<id>).
+  const materialPrices = [...formData.entries()]
+    .filter(([key]) => key.startsWith("material_price:"))
+    .map(([key, value]) => ({ id: key.slice("material_price:".length), unit_price: parseAmount(String(value)) }));
   const notes = fieldString(formData, "notes");
 
   if (!serviceId) return { ok: false, message: "Servicio no válido." };
   if (!Number.isFinite(labor) || labor <= 0) return { ok: false, message: "La mano de obra aprobada debe ser mayor a cero." };
-  if (hasMaterials && (!Number.isFinite(materials) || materials <= 0)) {
-    return { ok: false, message: "Indica el valor de los materiales para la opción todo incluido." };
+  if (hasMaterials && materialPrices.some((m) => !Number.isFinite(m.unit_price) || m.unit_price <= 0)) {
+    return { ok: false, message: "Indica el valor de cada material para la opción todo incluido." };
   }
   const supabase = await createClient();
   const { error } = await supabase.rpc("approve_quote", {
     p_service_id: serviceId,
     p_labor_total: labor,
-    p_materials_total: materials,
+    p_material_prices: materialPrices,
     p_notes: notes || undefined,
   });
   if (error) return fail(error);

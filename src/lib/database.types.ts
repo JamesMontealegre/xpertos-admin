@@ -844,35 +844,41 @@ export type Database = {
           created_at: string
           estimated_cost: number | null
           id: string
+          line_total: number | null
           name: string
           notes: string | null
           position: number
           quantity: number
           quote_id: string
           unit: string
+          unit_price: number | null
         }
         ComputedFields: never
         Insert: {
           created_at?: string
           estimated_cost?: number | null
           id?: string
+          line_total?: never
           name: string
           notes?: string | null
           position?: number
           quantity?: number
           quote_id: string
           unit?: string
+          unit_price?: number | null
         }
         Update: {
           created_at?: string
           estimated_cost?: number | null
           id?: string
+          line_total?: never
           name?: string
           notes?: string | null
           position?: number
           quantity?: number
           quote_id?: string
           unit?: string
+          unit_price?: number | null
         }
         Relationships: [
           {
@@ -1663,7 +1669,7 @@ export type Database = {
       approve_quote: {
         Args: {
           p_labor_total: number
-          p_materials_total?: number
+          p_material_prices?: Json
           p_notes?: string
           p_service_id: string
         }

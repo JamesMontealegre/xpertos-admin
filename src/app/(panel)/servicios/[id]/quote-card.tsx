@@ -67,9 +67,6 @@ export function QuoteCard({
   const materials = [...quote.materials].sort((a, b) => a.position - b.position);
   const itemsTotal = items.reduce((acc, i) => acc + Number(i.line_total ?? 0), 0);
   const laborTotal = quote.status === "draft" || quote.status === "returned" ? itemsTotal : Number(quote.labor_total);
-  const estimatedMaterials = materials.some((m) => m.estimated_cost != null)
-    ? materials.reduce((acc, m) => acc + Number(m.estimated_cost ?? 0), 0)
-    : null;
   const evaluating = status === "quoting" && quote.status === "submitted";
   // Presentada al cliente con dos opciones: aún no elige (no hay total).
   const awaitingChoice = status === "quoting" && quote.status === "approved" && quote.total == null;
@@ -185,8 +182,16 @@ export function QuoteCard({
                     </span>
                     {m.notes && <span className="block text-xs text-slate-500">{m.notes}</span>}
                   </span>
-                  <span className="text-slate-600">
-                    {m.estimated_cost != null ? `Costo estimado ${formatCOP(m.estimated_cost)}` : "Sin costo estimado"}
+                  <span className="text-right text-slate-600">
+                    {m.line_total != null && (
+                      <span className="block font-medium text-foreground">
+                        {formatCOP(m.line_total)}{" "}
+                        <span className="font-normal text-slate-500">({formatCOP(m.unit_price)} c/u)</span>
+                      </span>
+                    )}
+                    <span className="block text-xs text-slate-500">
+                      {m.estimated_cost != null ? `Estimado del experto: ${formatCOP(m.estimated_cost)} c/u` : "Sin estimado del experto"}
+                    </span>
                   </span>
                 </li>
               ))}
@@ -203,11 +208,18 @@ export function QuoteCard({
           <div className="space-y-3 border-t border-border pt-5">
             <QuoteReviewForm
               serviceId={serviceId}
-              hasMaterials={materials.length > 0}
+              materials={materials.map((m) => ({
+                id: m.id,
+                name: m.name,
+                quantity: Number(m.quantity),
+                unit: m.unit,
+                notes: m.notes,
+                estimated_cost: m.estimated_cost != null ? Number(m.estimated_cost) : null,
+                unit_price: m.unit_price != null ? Number(m.unit_price) : null,
+              }))}
               laborTotal={Number(quote.labor_total)}
               commissionPct={commissionPct}
               clientFeePct={clientFeePct}
-              materialsEstimate={estimatedMaterials}
             />
             <div className="flex flex-wrap items-center justify-end gap-2 text-sm text-slate-500">
               <span>¿Algo por corregir?</span>
