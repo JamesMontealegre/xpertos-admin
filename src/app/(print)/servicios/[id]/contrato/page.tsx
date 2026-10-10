@@ -28,7 +28,7 @@ export default async function ContractPrintPage(props: PageProps<"/servicios/[id
     supabase
       .from("contracts")
       .select(
-        "*, signatures:contract_signatures(id, signer_role, signed_at, ip, body_hash, signer:profiles!contract_signatures_signer_id_fkey(full_name))",
+        "*, signatures:contract_signatures(id, signer_role, signed_at, ip, body_hash, method, signer:profiles!contract_signatures_signer_id_fkey(full_name))",
       )
       .eq("service_id", id)
       .maybeSingle(),
@@ -107,7 +107,8 @@ export default async function ContractPrintPage(props: PageProps<"/servicios/[id
                       <p className="font-medium text-foreground">{ROLE_LABEL.client}</p>
                       {sig ? (
                         <p className="text-slate-600">
-                          {sig.signer?.full_name ?? ""} · aceptado el {formatDateTime(sig.signed_at)} · IP {sig.ip ?? "—"}
+                          {sig.signer?.full_name ?? ""} · aceptado el {formatDateTime(sig.signed_at)}{" "}
+                          {sig.method === "email" ? "con el enlace del correo y código de verificación" : "en la app"} · IP {sig.ip ?? "—"}
                         </p>
                       ) : (
                         <p className="text-slate-500">Pendiente de aceptación en la app</p>

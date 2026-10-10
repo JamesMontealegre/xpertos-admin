@@ -123,7 +123,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     supabase
       .from("contracts")
       .select(
-        "*, signatures:contract_signatures(id, signer_role, signed_at, ip, body_hash, signer:profiles!contract_signatures_signer_id_fkey(full_name))",
+        "*, signatures:contract_signatures(id, signer_role, signed_at, ip, body_hash, method, signer:profiles!contract_signatures_signer_id_fkey(full_name))",
       )
       .eq("service_id", id)
       .maybeSingle(),

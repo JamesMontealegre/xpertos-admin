@@ -19,6 +19,7 @@ export type ContractWithSignatures = Database["public"]["Tables"]["contracts"]["
     signed_at: string;
     ip: string | null;
     body_hash: string;
+    method: string;
     signer: { full_name: string } | null;
   }>;
 };
@@ -81,7 +82,7 @@ export function ContractCard({
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Firmas</p>
             <p className="mt-1 text-sm text-slate-500">
-              Contrato entre Xpertos y el cliente: Xpertos lo emite y acepta al generarlo; queda firmado cuando el cliente lo acepta en la app.
+              Contrato entre Xpertos y el cliente: Xpertos lo emite y acepta al generarlo; queda firmado cuando el cliente lo acepta en la app o desde el enlace que le llega al correo (con código de verificación).
             </p>
             {contract.signatures.length === 0 ? (
               <p className="mt-1 text-sm text-slate-500">El cliente aún no ha firmado esta versión.</p>
@@ -94,7 +95,7 @@ export function ContractCard({
                       {sig.signer?.full_name ? ` · ${sig.signer.full_name}` : ""}
                     </span>
                     <span className="text-xs text-slate-500">
-                      {formatDateTime(sig.signed_at)} · IP {sig.ip ?? "—"}
+                      {formatDateTime(sig.signed_at)} · {sig.method === "email" ? "por correo con código" : "en la app"} · IP {sig.ip ?? "—"}
                       {sig.body_hash !== contract.body_hash && " · versión anterior"}
                     </span>
                   </li>

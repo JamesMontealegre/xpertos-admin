@@ -92,6 +92,73 @@ export type Database = {
           },
         ]
       }
+      contract_sign_requests: {
+        Row: {
+          body_hash: string
+          client_id: string
+          code_attempts: number
+          code_expires_at: string | null
+          code_hash: string | null
+          code_sent_at: string | null
+          codes_sent: number
+          contract_id: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          token_hash: string
+          used_at: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          body_hash: string
+          client_id: string
+          code_attempts?: number
+          code_expires_at?: string | null
+          code_hash?: string | null
+          code_sent_at?: string | null
+          codes_sent?: number
+          contract_id: string
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          body_hash?: string
+          client_id?: string
+          code_attempts?: number
+          code_expires_at?: string | null
+          code_hash?: string | null
+          code_sent_at?: string | null
+          codes_sent?: number
+          contract_id?: string
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_sign_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contract_sign_requests_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_signatures: {
         Row: {
           accepted_terms: boolean
@@ -99,6 +166,7 @@ export type Database = {
           contract_id: string
           id: string
           ip: string | null
+          method: string
           signature_image_path: string | null
           signed_at: string
           signer_id: string
@@ -112,6 +180,7 @@ export type Database = {
           contract_id: string
           id?: string
           ip?: string | null
+          method?: string
           signature_image_path?: string | null
           signed_at?: string
           signer_id: string
@@ -124,6 +193,7 @@ export type Database = {
           contract_id?: string
           id?: string
           ip?: string | null
+          method?: string
           signature_image_path?: string | null
           signed_at?: string
           signer_id?: string
@@ -1465,8 +1535,7 @@ export type Database = {
           estimated_end_date: string | null
           payment_date: string | null
           payout_frequency:
-            | Database["public"]["Enums"]["payout_frequency"]
-            | null
+            Database["public"]["Enums"]["payout_frequency"] | null
           pricing_mode: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date: string | null
           service_id: string | null
@@ -1571,6 +1640,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      _issue_contract_sign_request: {
+        Args: { p_contract_id: string }
+        Returns: undefined
+      }
+      _mask_email: { Args: { p: string }; Returns: string }
       _notification_text: {
         Args: { p_audience: string; p_data: Json; p_template: string }
         Returns: {
@@ -1583,7 +1657,34 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      _request_ip: { Args: Record<PropertyKey, never>; Returns: string }
       _service_email_data: { Args: { p_service: string }; Returns: Json }
+      _sha256: { Args: { p: string }; Returns: string }
+      _sign_request_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          body_hash: string
+          client_id: string
+          code_attempts: number
+          code_expires_at: string | null
+          code_hash: string | null
+          code_sent_at: string | null
+          codes_sent: number
+          contract_id: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          token_hash: string
+          used_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "contract_sign_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       add_business_days: {
         Args: { p_days: number; p_from: string }
         Returns: string
@@ -1865,6 +1966,12 @@ export type Database = {
         Args: { p_key: string; p_url: string }
         Returns: undefined
       }
+      contract_sign_confirm: {
+        Args: { p_code: string; p_token: string; p_user_agent?: string }
+        Returns: Json
+      }
+      contract_sign_send_code: { Args: { p_token: string }; Returns: Json }
+      contract_sign_view: { Args: { p_token: string }; Returns: Json }
       create_admin_user: {
         Args: {
           p_city?: string
@@ -2077,6 +2184,7 @@ export type Database = {
           contract_id: string
           id: string
           ip: string | null
+          method: string
           signature_image_path: string | null
           signed_at: string
           signer_id: string
@@ -2146,6 +2254,7 @@ export type Database = {
       }
       today_co: { Args: Record<PropertyKey, never>; Returns: string }
       try_uuid: { Args: { p: string }; Returns: string }
+      unit_price_label: { Args: { p_unit: string }; Returns: string }
     }
     Enums: {
       application_status:
@@ -2172,11 +2281,7 @@ export type Database = {
       payment_method: "transfer" | "cash" | "mercado_pago" | "tucompra"
       payment_status: "submitted" | "verified" | "rejected"
       payout_frequency:
-        | "daily"
-        | "weekly"
-        | "biweekly"
-        | "monthly"
-        | "on_completion"
+        "daily" | "weekly" | "biweekly" | "monthly" | "on_completion"
       payout_method: "bank_account" | "nequi" | "efecty"
       pricing_mode: "labor_only" | "all_inclusive"
       quote_status: "draft" | "submitted" | "returned" | "approved"
@@ -2192,11 +2297,7 @@ export type Database = {
         | "completed"
         | "cancelled"
       stage_status:
-        | "pending"
-        | "awaiting_payment"
-        | "proof_uploaded"
-        | "paid"
-        | "rejected"
+        "pending" | "awaiting_payment" | "proof_uploaded" | "paid" | "rejected"
       user_role: "client" | "expert" | "admin"
     }
     CompositeTypes: {
@@ -2213,12 +2314,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2240,13 +2341,12 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2265,13 +2365,12 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2290,13 +2389,12 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2309,11 +2407,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
