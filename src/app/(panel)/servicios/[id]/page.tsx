@@ -22,6 +22,7 @@ import {
   payoutMethodLabel,
   type ServiceStatus,
   PRICING_MODE,
+  CONTRACT_STATUS,
 } from "@/lib/labels";
 import { STARTED_STATUSES, WORK_STATUSES } from "@/lib/service-phase";
 import { signedUrlMap } from "@/lib/storage";
@@ -42,6 +43,7 @@ import { PayoutsCard } from "./payouts-card";
 import { QuoteCard, expertNetEstimate, type QuoteWithLines } from "./quote-card";
 import { ScheduleCard } from "./schedule-card";
 import { Timeline, type TimelineEvent } from "./timeline";
+import { NextSteps, Step } from "./next-steps";
 import { WorkLogsCard, type WorkLogView } from "./work-logs-card";
 import { cancelService, moveService, pauseService, resumeService } from "../actions";
 
@@ -50,21 +52,38 @@ export const metadata: Metadata = { title: "Detalle de servicio" };
 type Slot = { date?: string; from?: string; to?: string };
 type SectionKey = "review" | "assign" | "quote" | "payments" | "schedule" | "work" | "payout" | "contract" | "details" | "photos" | "reviews";
 
-/** Orden de las tarjetas; la del paso actual (FOCUS) sube al principio. */
-const ORDER: SectionKey[] = ["review", "assign", "work", "schedule", "payout", "quote", "payments", "contract", "details", "photos", "reviews"];
+/**
+ * Orden de las tarjetas según lo que más le sirve al equipo en cada estado: primero la acción que toca
+ * (asignar, evaluar, verificar el pago, comprar materiales, revisar jornadas, verificar, pagar al experto),
+ * luego el detalle del servicio. Las que no estén en la lista van al final en el orden base.
+ */
+const ORDER: Record<ServiceStatus, SectionKey[]> = {
+  requested: ["assign", "details", "photos"],
+  assigned: ["assign", "quote", "details", "photos"],
+  quoting: ["quote", "details", "photos"],
+  pending_payment: ["payments", "contract", "quote", "details", "photos"],
+  scheduled: ["schedule", "quote", "contract", "payments", "payout", "details", "photos"],
+  in_progress: ["work", "schedule", "payout", "quote", "contract", "payments", "details", "photos"],
+  paused: ["work", "schedule", "payout", "quote", "contract", "payments", "details", "photos"],
+  under_review: ["review", "work", "quote", "contract", "payments", "schedule", "payout", "details", "photos"],
+  completed: ["payout", "reviews", "work", "quote", "contract", "payments", "schedule", "details", "photos"],
+  cancelled: ["details", "quote", "payments", "contract", "schedule", "work", "payout", "photos", "reviews"],
+};
+const BASE_ORDER: SectionKey[] = ["review", "assign", "work", "schedule", "payout", "quote", "payments", "contract", "details", "photos", "reviews"];
 
-/** Tarjeta que va primero según el estado: la acción que toca ahora. */
-const FOCUS: Record<ServiceStatus, SectionKey> = {
-  requested: "assign",
-  assigned: "quote",
-  quoting: "quote",
-  pending_payment: "payments",
-  scheduled: "schedule",
-  in_progress: "work",
-  paused: "work",
-  under_review: "review",
-  completed: "payout",
-  cancelled: "details",
+/** Ancla de cada tarjeta (los botones de "Qué sigue" llevan hasta ella). */
+const ANCHOR: Record<SectionKey, string> = {
+  review: "verificacion",
+  assign: "asignacion",
+  quote: "cotizacion",
+  payments: "pago",
+  schedule: "inicio",
+  work: "jornadas",
+  payout: "pago-experto",
+  contract: "contrato",
+  details: "datos",
+  photos: "fotos",
+  reviews: "resenas",
 };
 
 /** datetime-local (hora de Colombia) a partir de un timestamp. */
@@ -350,7 +369,6 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
       key: "assign",
       node: (
         <Card>
-          <div id="asignacion" className="scroll-mt-6" />
           <CardHeader
             title={status === "assigned" ? "Reasignar experto" : "Asignar experto"}
             description="Filtra por actividad, elige al experto y revisa su detalle. El experto elegido arma la cotización desde su app."
@@ -539,10 +557,150 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     });
   }
 
-  const focusKey = FOCUS[status];
-  const rank = (key: SectionKey) => (key === focusKey ? -1 : ORDER.indexOf(key));
+  const order = ORDER[status];
+  const rank = (key: SectionKey) => {
+    const i = order.indexOf(key);
+    return i >= 0 ? i : order.length + BASE_ORDER.indexOf(key);
+  };
   const ordered = [...sections].sort((a, b) => rank(a.key) - rank(b.key));
   const statusInfo = SERVICE_STATUS[status];
+
+  // Resumen: valores del servicio, estado del pago del cliente y del contrato.
+  const labor = quoteWithLines ? Number(quoteWithLines.approved_labor_total ?? quoteWithLines.labor_total ?? 0) : null;
+  const chosen = quoteWithLines?.total != null;
+  const xpertosGain =
+    chosen && labor != null && netEstimate != null ? Number(quoteWithLines?.client_fee_total ?? 0) + (labor - netEstimate) : null;
+  const allPaid = stageList.length > 0 && stageList.every((s) => s.status === "paid");
+  const proofRejected = !allPaid && !hasProofToVerify && stageList.some((s) => s.status === "rejected");
+  const clientPayment = allPaid ? "Verificado" : hasProofToVerify ? "Comprobante por verificar" : proofRejected ? "Comprobante rechazado" : "Pendiente";
+  const typedContract = (contract ?? null) as ContractWithSignatures | null;
+  const contractSigned = typedContract?.status === "signed";
+  const startAct = Boolean(typedContract?.body_md.includes("acta de inicio"));
+  const payoutCount = (payouts ?? []).length;
+  const expertName = expertProfile?.profile?.full_name || "el experto";
+  const expertPhone = expertProfile?.profile?.phone;
+
+  const steps: React.ReactNode = (() => {
+    switch (status) {
+      case "requested":
+        return (
+          <Step state="todo" title="Asigna un experto del pool" detail="Filtra por actividad y revisa disponibilidad y calificación." action={{ label: "Asignar experto", href: `#${ANCHOR.assign}` }} />
+        );
+      case "assigned":
+        return (
+          <Step
+            state={quoteWithLines?.status === "returned" ? "alert" : "waiting"}
+            title={
+              quoteWithLines?.status === "returned"
+                ? "El experto corrige la cotización devuelta"
+                : quoteWithLines
+                  ? "El experto está armando la cotización"
+                  : "Esperando la cotización del experto"
+            }
+            detail={`${expertName}${expertPhone ? ` · ${expertPhone}` : ""}${service.scheduled_at ? ` · visita ${formatDateTime(service.scheduled_at)}` : ""}`}
+            action={{ label: "Reasignar", href: `#${ANCHOR.assign}` }}
+          />
+        );
+      case "quoting":
+        return quoteWithLines?.status === "approved" && !chosen ? (
+          <Step
+            state="waiting"
+            title="El cliente elige solo mano de obra o todo incluido"
+            detail="Si te dice su elección por otro medio, regístrala en la cotización."
+            action={{ label: "Ver cotización", href: `#${ANCHOR.quote}` }}
+          />
+        ) : (
+          <Step state="todo" title="Revisa y presenta la cotización al cliente" detail="Valida la mano de obra y pon el valor por unidad de cada material." action={{ label: "Evaluar cotización", href: `#${ANCHOR.quote}` }} />
+        );
+      case "pending_payment":
+        return (
+          <>
+            <Step
+              state={hasProofToVerify ? "todo" : proofRejected ? "alert" : "waiting"}
+              title={hasProofToVerify ? "Verifica el comprobante en el banco" : proofRejected ? "El cliente debe subir otro comprobante" : "Esperando el comprobante del cliente"}
+              detail={`Total ${formatCOP(service.estimated_price)}.`}
+              action={hasProofToVerify ? { label: "Verificar pago", href: `#${ANCHOR.payments}` } : null}
+            />
+            <Step
+              state={contractSigned ? "done" : "waiting"}
+              title={contractSigned ? "El cliente firmó el contrato" : "Firma del cliente pendiente"}
+              detail={contractSigned ? undefined : "Le llegó el enlace para firmar por correo; también puede firmar en la app."}
+              action={{ label: "Ver contrato", href: `#${ANCHOR.contract}` }}
+            />
+          </>
+        );
+      case "scheduled":
+        return (
+          <>
+            {service.pricing_mode === "all_inclusive" && (
+              <Step
+                state="todo"
+                title={`Compra los materiales y llévalos al lugar antes del ${formatDayMonth(service.start_date)}`}
+                detail={`${quoteWithLines?.materials.length ?? 0} materiales · ${[service.address, service.city].filter(Boolean).join(", ")}`}
+                action={{ label: "Ver materiales", href: `#${ANCHOR.quote}` }}
+              />
+            )}
+            <Step state="waiting" title={hint ?? "Programado"} detail="El servicio inicia solo en la fecha acordada." action={{ label: "Ver fechas", href: `#${ANCHOR.schedule}` }} />
+            {typedContract && !contractSigned && (
+              <Step state="waiting" title={startAct ? "Firma del acta de inicio pendiente" : "Firma del contrato pendiente"} action={{ label: "Ver contrato", href: `#${ANCHOR.contract}` }} />
+            )}
+          </>
+        );
+      case "in_progress":
+      case "paused":
+        return (
+          <>
+            <Step
+              state={missingDays.length > 0 ? "alert" : "done"}
+              title={missingDays.length > 0 ? `${missingDays.length === 1 ? "1 día hábil" : `${missingDays.length} días hábiles`} sin registro de jornada` : "Jornadas al día"}
+              detail={`${logViews.length} ${logViews.length === 1 ? "jornada registrada" : "jornadas registradas"}.`}
+              action={{ label: "Ver jornadas", href: `#${ANCHOR.work}` }}
+            />
+            {service.payout_frequency !== "on_completion" && (
+              <Step
+                state="todo"
+                title={`Pagos ${PAYOUT_FREQUENCY[service.payout_frequency].toLowerCase()} al experto`}
+                detail={`${payoutCount} ${payoutCount === 1 ? "pago registrado" : "pagos registrados"}.`}
+                action={{ label: "Registrar pago", href: `#${ANCHOR.payout}` }}
+              />
+            )}
+          </>
+        );
+      case "under_review":
+        return (
+          <Step
+            state={reviewOverdue ? "alert" : "todo"}
+            title="Verifica con el cliente y finaliza o devuelve a ejecución"
+            detail={service.review_due_date ? `Plazo: ${formatDate(service.review_due_date)}${reviewOverdue ? " · vencido" : ""}.` : undefined}
+            action={{ label: "Verificar", href: `#${ANCHOR.review}` }}
+          />
+        );
+      case "completed":
+        return (
+          <Step
+            state={payoutCount > 0 ? "done" : "todo"}
+            title={payoutCount > 0 ? "Pago al experto registrado" : `Registra el pago al experto${netEstimate != null ? `: ${formatCOP(netEstimate)}` : ""}`}
+            detail={`${payoutMethodLabel(expertProfile?.payout_method)}${expertProfile?.payout_account ? ` · ${expertProfile.payout_account}` : ""}`}
+            action={{ label: payoutCount > 0 ? "Ver pago" : "Registrar pago", href: `#${ANCHOR.payout}` }}
+          />
+        );
+      default:
+        return null;
+    }
+  })();
+
+  const facts = [
+    { label: "Total que paga el cliente", value: chosen ? formatCOP(service.estimated_price) : null },
+    { label: "Modalidad", value: service.pricing_mode ? PRICING_MODE[service.pricing_mode].label : null },
+    { label: "Cotización del experto", value: labor ? formatCOP(labor) : null },
+    { label: "Neto para el experto", value: netEstimate != null ? formatCOP(netEstimate) : null },
+    { label: "Ganancia Xpertos", value: xpertosGain != null ? formatCOP(xpertosGain) : null },
+    { label: "Pago del cliente", value: stageList.length > 0 ? clientPayment : null },
+    { label: "Contrato", value: typedContract ? CONTRACT_STATUS[typedContract.status].label : null },
+    { label: "Visita acordada", value: service.scheduled_at && assigning ? formatDateTime(service.scheduled_at) : null },
+    { label: "Inicio de obra", value: schedule?.start_date ? formatDate(schedule.start_date) : null },
+    { label: "Fin estimado", value: schedule?.estimated_end_date ? formatDate(schedule.estimated_end_date) : null },
+  ].filter((f): f is { label: string; value: string } => Boolean(f.value));
 
   return (
     <>
@@ -615,6 +773,8 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
       <Card className="mb-6">
         <CardBody className="space-y-4">
           <ServicePhaseBar status={status} cancelledFrom={cancelledFrom} hint={hint} />
+          {steps && <NextSteps>{steps}</NextSteps>}
+          {facts.length > 0 && <DescriptionList columns={3} items={facts} />}
           {status === "paused" && (
             <Alert tone="warning">Servicio en pausa{service.pause_reason ? `: ${service.pause_reason}` : "."}</Alert>
           )}
@@ -631,7 +791,9 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
       <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
         <div className="min-w-0 space-y-6 lg:col-span-2">
           {ordered.map((section) => (
-            <div key={section.key}>{section.node}</div>
+            <div key={section.key} id={ANCHOR[section.key]} className="scroll-mt-6">
+              {section.node}
+            </div>
           ))}
         </div>
 
