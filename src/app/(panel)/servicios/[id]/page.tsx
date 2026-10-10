@@ -357,6 +357,8 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
           />
           <CardBody>
             <AssignForm
+              // Al asignar o reasignar se vuelve a montar con el experto vigente seleccionado.
+              key={service.expert_id ?? "sin-experto"}
               serviceId={service.id}
               experts={expertOptions}
               categories={categoryRows ?? []}
@@ -575,7 +577,17 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
               </ActionDialog>
             )}
             {status === "paused" && (
-              <ActionButton action={resumeService} fields={{ service_id: service.id }} variant="primary" size="md">
+              <ActionButton
+                action={resumeService}
+                fields={{ service_id: service.id }}
+                variant="primary"
+                size="md"
+                confirm={{
+                  title: "Reanudar el servicio",
+                  description: "Vuelve a En ejecución y avisamos al cliente y al experto.",
+                  confirmLabel: "Reanudar",
+                }}
+              >
                 Reanudar
               </ActionButton>
             )}

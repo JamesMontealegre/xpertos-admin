@@ -53,6 +53,8 @@ export function AssignForm({
 }) {
   const [categoryId, setCategoryId] = useState<string>(serviceCategoryId);
   const [expertId, setExpertId] = useState(currentExpertId ?? "");
+  // React limpia el formulario al terminar la acción; se vuelve a montar para mostrar la selección vigente.
+  const [formKey, setFormKey] = useState(0);
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
   const serviceCategoryName = categoryName.get(serviceCategoryId) ?? "la del servicio";
 
@@ -88,7 +90,19 @@ export function AssignForm({
   };
 
   return (
-    <ActionForm action={assignService} className="space-y-4">
+    <ActionForm
+      key={formKey}
+      action={assignService}
+      onSuccess={() => setFormKey((k) => k + 1)}
+      className="space-y-4"
+      confirm={{
+        title: sameExpert ? "Guardar la fecha de visita" : reassigning ? "Reasignar el experto" : "Asignar el experto",
+        description: sameExpert
+          ? "Se actualiza la fecha de visita acordada."
+          : `${selected?.full_name ?? "El experto"} recibirá el servicio y armará la cotización desde su app. Le avisaremos por correo a él y al cliente.${reassigning ? " La cotización del experto anterior se descarta." : ""}`,
+        confirmLabel: sameExpert ? "Guardar fecha" : reassigning ? "Reasignar" : "Asignar experto",
+      }}
+    >
       <input type="hidden" name="service_id" value={serviceId} />
 
       <div className="grid gap-4 sm:grid-cols-2">

@@ -7,7 +7,7 @@ import { PhotoGrid, type PhotoItem } from "@/components/ui/photo-grid";
 import { EmptyRow, Table, TBody, Td, THead, Tr } from "@/components/ui/table";
 import type { Database } from "@/lib/database.types";
 import { businessDaysLabel, formatCOP, formatDateTime } from "@/lib/format";
-import { PRICING_MODE, QUOTE_STATUS, type ServiceStatus } from "@/lib/labels";
+import { PRICING_MODE, QUOTE_STATUS, unitPriceLabel, type ServiceStatus } from "@/lib/labels";
 import { choosePricingMode, returnQuote } from "../actions";
 import { QuoteReviewForm } from "./quote-review-form";
 
@@ -186,11 +186,15 @@ export function QuoteCard({
                     {m.line_total != null && (
                       <span className="block font-medium text-foreground">
                         {formatCOP(m.line_total)}{" "}
-                        <span className="font-normal text-slate-500">({formatCOP(m.unit_price)} c/u)</span>
+                        <span className="font-normal text-slate-500">
+                          ({formatCOP(m.unit_price)} {unitPriceLabel(m.unit)})
+                        </span>
                       </span>
                     )}
                     <span className="block text-xs text-slate-500">
-                      {m.estimated_cost != null ? `Estimado del experto: ${formatCOP(m.estimated_cost)} c/u` : "Sin estimado del experto"}
+                      {m.estimated_cost != null
+                        ? `Estimado del experto: ${formatCOP(m.estimated_cost)} ${unitPriceLabel(m.unit)}`
+                        : "Sin estimado del experto"}
                     </span>
                   </span>
                 </li>

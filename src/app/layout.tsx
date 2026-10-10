@@ -3,6 +3,7 @@ import { Geist_Mono, Mulish } from "next/font/google";
 import { Suspense } from "react";
 import { NavigationLoader } from "@/components/navigation-loader";
 import { VersionWatcher } from "@/components/version-watcher";
+import { ToastProvider } from "@/components/ui/toaster";
 import "./globals.css";
 
 // Mulish como fuente variable (pesos 400–900 en un solo archivo).
@@ -29,7 +30,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="es-CO" className={`${mulish.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full font-sans">
-        {children}
+        <ToastProvider>{children}</ToastProvider>
         {/* Loader entre páginas: la X de Xpertos mientras carga la siguiente vista. */}
         <Suspense fallback={null}>
           <NavigationLoader />

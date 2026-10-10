@@ -89,6 +89,11 @@ export function PaymentsCard({
                                 fields={{ service_id: serviceId, payment_id: payment.id, decision: "verified" }}
                                 variant="primary"
                                 pendingLabel="Verificando…"
+                                confirm={{
+                                  title: "Verificar el pago",
+                                  description: `Confirmas que el pago de ${formatCOP(payment.amount)} aparece en el banco. Si cubre el total, el servicio pasa a Programado y se fija la fecha de inicio.`,
+                                  confirmLabel: "Verificar pago",
+                                }}
                               >
                                 Verificar
                               </ActionButton>

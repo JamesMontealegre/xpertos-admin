@@ -144,7 +144,12 @@ export default async function EmailsPage(props: PageProps<"/configuracion/correo
                   </Td>
                   <Td className="text-right">
                     {e.status === "failed" && (
-                      <ActionButton action={retryEmail} fields={{ id: e.id }} pendingLabel="Enviando…">
+                      <ActionButton
+                        action={retryEmail}
+                        fields={{ id: e.id }}
+                        pendingLabel="Enviando…"
+                        confirm={{ title: "Reintentar el envío", description: `Se volverá a enviar el correo a ${e.to_email}.`, confirmLabel: "Reintentar" }}
+                      >
                         Reintentar
                       </ActionButton>
                     )}

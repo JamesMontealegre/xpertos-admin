@@ -285,3 +285,11 @@ export const EMAIL_AUDIENCE_LABEL: Record<string, string> = {
 
 /** Intentos de envío antes de dejar un correo como fallido definitivo (igual que en la base). */
 export const EMAIL_MAX_ATTEMPTS = 5;
+
+/** Unidades que se cuentan (bultos, cajas, unidades): su precio va "c/u"; las de medida, "por m²", "por kg"… */
+const COUNTED_UNITS = ["und", "caja", "global"];
+
+/** Cómo se lee el precio unitario según la unidad: "c/u" o "por m²", "por ml", "por kg"… */
+export function unitPriceLabel(unit: string): string {
+  return COUNTED_UNITS.includes(unit) || unit.startsWith("bulto") ? "c/u" : `por ${unit}`;
+}

@@ -88,7 +88,15 @@ export function PayoutsCard({
           )}
         </div>
 
-        <ActionForm action={registerPayout} className="space-y-4 rounded-xl border border-border p-4">
+        <ActionForm
+          action={registerPayout}
+          className="space-y-4 rounded-xl border border-border p-4"
+          confirm={{
+            title: "Registrar el pago al experto",
+            description: "Queda en el historial del servicio y le avisamos al experto por correo y en la app.",
+            confirmLabel: "Registrar pago",
+          }}
+        >
           <p className="text-sm font-medium">Registrar pago al experto</p>
           <input type="hidden" name="service_id" value={serviceId} />
           <input type="hidden" name="expert_id" value={expertId} />

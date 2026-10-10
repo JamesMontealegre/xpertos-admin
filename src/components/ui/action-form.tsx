@@ -1,40 +1,86 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import type { ActionResult } from "@/lib/actions";
 import { Alert } from "./alert";
 import { Button, type ButtonSize, type ButtonVariant } from "./button";
 import { cn } from "./cn";
+import { ConfirmDialog, type ConfirmOptions } from "./confirm-dialog";
+import { useToast } from "./toaster";
 
 export type FormAction = (state: ActionResult, formData: FormData) => Promise<ActionResult>;
 
+/**
+ * Formulario conectado a una Server Action con el comportamiento estándar del panel:
+ * - `confirm`: antes de ejecutar pide confirmación (no hace falta dentro de un ActionDialog, que ya lo es).
+ * - Al terminar muestra un aviso de éxito o de error (y el error también debajo del formulario).
+ */
 export function ActionForm({
   action,
   children,
   className,
   onSuccess,
   showSuccess = true,
+  confirm,
 }: {
   action: FormAction;
   children: React.ReactNode;
   className?: string;
   onSuccess?: () => void;
+  /** Aviso de éxito al terminar (con el mensaje que devuelve la acción). */
   showSuccess?: boolean;
+  confirm?: ConfirmOptions;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
+  const { toast } = useToast();
+  const formRef = useRef<HTMLFormElement>(null);
+  const confirmed = useRef(false);
+  const [asking, setAsking] = useState<{ submitter: HTMLElement | null } | null>(null);
 
+  // Cada envío devuelve un estado nuevo: un aviso por cada resultado, aunque el mensaje se repita.
   useEffect(() => {
-    if (state?.ok) onSuccess?.();
+    if (!state) return;
+    if (state.ok) {
+      if (showSuccess && state.message) toast(state.message, "success");
+      onSuccess?.();
+    } else {
+      toast(state.message, "error");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   return (
     // aria-busy: la actualización automática del panel espera a que termine la acción.
-    <form action={formAction} className={cn("space-y-3", className)} aria-busy={pending || undefined}>
+    <form
+      ref={formRef}
+      action={formAction}
+      className={cn("space-y-3", className)}
+      aria-busy={pending || undefined}
+      onSubmit={(event) => {
+        if (!confirm || confirmed.current) {
+          confirmed.current = false;
+          return;
+        }
+        event.preventDefault();
+        setAsking({ submitter: (event.nativeEvent as SubmitEvent).submitter as HTMLElement | null });
+      }}
+    >
       {children}
       {state && !state.ok && <Alert tone="error">{state.message}</Alert>}
-      {showSuccess && state?.ok && state.message && <Alert tone="success">{state.message}</Alert>}
+      {confirm && (
+        <ConfirmDialog
+          open={asking !== null}
+          options={confirm}
+          onCancel={() => setAsking(null)}
+          onConfirm={() => {
+            const submitter = asking?.submitter ?? undefined;
+            setAsking(null);
+            confirmed.current = true;
+            formRef.current?.requestSubmit(submitter as HTMLButtonElement | undefined);
+          }}
+        />
+      )}
     </form>
   );
 }
@@ -77,7 +123,7 @@ export function SubmitButton({
   );
 }
 
-/** Botón que ejecuta una Server Action con campos ocultos; muestra el error debajo. */
+/** Botón que ejecuta una Server Action con campos ocultos: pide confirmación y avisa el resultado. */
 export function ActionButton({
   action,
   fields,
@@ -88,6 +134,7 @@ export function ActionButton({
   title,
   pendingLabel,
   className,
+  confirm,
 }: {
   action: FormAction;
   fields: Record<string, string>;
@@ -98,9 +145,10 @@ export function ActionButton({
   title?: string;
   pendingLabel?: string;
   className?: string;
+  confirm: ConfirmOptions;
 }) {
   return (
-    <ActionForm action={action} className={cn("inline-block space-y-2", className)} showSuccess={false}>
+    <ActionForm action={action} className={cn("inline-block space-y-2", className)} confirm={confirm}>
       {Object.entries(fields).map(([name, value]) => (
         <input key={name} type="hidden" name={name} value={value} />
       ))}

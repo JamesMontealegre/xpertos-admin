@@ -104,7 +104,7 @@ export function ActionDialog({
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title={title} description={description}>
         {open && (
-          <ActionForm action={action} onSuccess={() => setOpen(false)} showSuccess={false}>
+          <ActionForm action={action} onSuccess={() => setOpen(false)}>
             {fields &&
               Object.entries(fields).map(([name, value]) => (
                 <input key={name} type="hidden" name={name} value={value} />

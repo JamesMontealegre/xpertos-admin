@@ -5,6 +5,7 @@ import { ActionForm, SubmitButton } from "@/components/ui/action-form";
 import { Field, Textarea } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { formatCOP } from "@/lib/format";
+import { unitPriceLabel } from "@/lib/labels";
 import { approveQuote } from "../actions";
 
 export type ReviewMaterial = {
@@ -71,7 +72,23 @@ export function QuoteReviewForm({
   const canApprove = laborValue > 0 && (!hasMaterials || allPriced);
 
   return (
-    <ActionForm action={approveQuote} className="space-y-4">
+    <ActionForm
+      action={approveQuote}
+      className="space-y-4"
+      confirm={
+        hasMaterials
+          ? {
+              title: "Presentar la cotización al cliente",
+              description: `El cliente verá la mano de obra, los materiales y las dos opciones: solo mano de obra por ${formatCOP(laborValue + feeLaborOnly)} y todo incluido por ${formatCOP(laborValue + materialsValue + feeAllInclusive)}. Le llegará un correo y un aviso en la app para que elija.`,
+              confirmLabel: "Presentar al cliente",
+            }
+          : {
+              title: "Aprobar la cotización",
+              description: `No hay materiales: se le cobrará al cliente ${formatCOP(laborValue + feeLaborOnly)}, el servicio pasa a Pendiente de pago y se genera el contrato.`,
+              confirmLabel: "Aprobar y enviar a pago",
+            }
+      }
+    >
       <input type="hidden" name="service_id" value={serviceId} />
       <input type="hidden" name="has_materials" value={hasMaterials ? "1" : "0"} />
 
@@ -92,7 +109,7 @@ export function QuoteReviewForm({
               <thead className="bg-slate-50 text-xs font-medium uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-3 py-2">Material</th>
-                  <th className="hidden px-3 py-2 sm:table-cell">Estimado del experto (c/u)</th>
+                  <th className="hidden px-3 py-2 sm:table-cell">Estimado del experto</th>
                   <th className="w-44 px-3 py-2">Valor unitario</th>
                   <th className="w-32 px-3 py-2 text-right">Subtotal</th>
                 </tr>
@@ -107,11 +124,11 @@ export function QuoteReviewForm({
                         {m.notes ? ` · ${m.notes}` : ""}
                       </span>
                       <span className="block text-xs text-slate-400 sm:hidden">
-                        Estimado: {m.estimated_cost != null ? formatCOP(m.estimated_cost) : "sin dato"}
+                        Estimado: {m.estimated_cost != null ? `${formatCOP(m.estimated_cost)} ${unitPriceLabel(m.unit)}` : "sin dato"}
                       </span>
                     </td>
                     <td className="hidden px-3 py-2 text-slate-500 sm:table-cell">
-                      {m.estimated_cost != null ? formatCOP(m.estimated_cost) : "Sin dato"}
+                      {m.estimated_cost != null ? `${formatCOP(m.estimated_cost)} ${unitPriceLabel(m.unit)}` : "Sin dato"}
                     </td>
                     <td className="px-3 py-2">
                       <MoneyInput
@@ -121,6 +138,7 @@ export function QuoteReviewForm({
                         onChange={(digits) => setPrices((current) => ({ ...current, [m.id]: digits }))}
                         required
                       />
+                      <span className="mt-0.5 block text-xs text-slate-500">{unitPriceLabel(m.unit)}</span>
                     </td>
                     <td className="px-3 py-2 text-right font-medium whitespace-nowrap">{formatCOP(lineTotal(m))}</td>
                   </tr>
