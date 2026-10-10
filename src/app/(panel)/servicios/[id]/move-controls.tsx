@@ -92,11 +92,8 @@ function ForwardControl({ serviceId, status, target }: { serviceId: string; stat
     );
   }
   if (status === "quoting") {
-    return (
-      <LinkButton href="#cotizacion" variant="primary" size="sm">
-        Evaluar la cotización ↓
-      </LinkButton>
-    );
+    // La evaluación está en la tarjeta de la cotización; pasa a Pendiente de pago cuando el cliente elige la opción.
+    return <span className="text-xs text-slate-500">Pasa a Pendiente de pago cuando el cliente elige la opción de la cotización.</span>;
   }
 
   return (

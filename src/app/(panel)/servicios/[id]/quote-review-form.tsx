@@ -37,7 +37,9 @@ export function QuoteReviewForm({
   const laborValue = Number(labor) || 0;
   const materialsValue = hasMaterials ? Number(materials) || 0 : 0;
   const commissionAmount = Math.round((laborValue * commissionPct) / 100);
-  const clientFee = Math.round((laborValue * clientFeePct) / 100);
+  // Tarifa del cliente: % del total de cada opción (solo mano de obra, o mano de obra + materiales).
+  const feeLaborOnly = Math.round((laborValue * clientFeePct) / 100);
+  const feeAllInclusive = Math.round(((laborValue + materialsValue) * clientFeePct) / 100);
   const expertNet = laborValue - commissionAmount;
   const canApprove = laborValue > 0 && (!hasMaterials || materialsValue > 0);
 
@@ -95,22 +97,22 @@ export function QuoteReviewForm({
             {hasMaterials ? "Opciones que verá el cliente" : "Lo que paga el cliente"}
           </p>
           <div className="flex justify-between gap-3">
-            <dt className="text-slate-600">Mano de obra</dt>
-            <dd>{formatCOP(laborValue)}</dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-slate-600">Tarifa de servicio ({clientFeePct} %)</dt>
-            <dd>+ {formatCOP(clientFee)}</dd>
-          </div>
-          <div className="flex justify-between gap-3 border-t border-border pt-1.5">
             <dt className="font-medium">Solo mano de obra</dt>
-            <dd className="font-semibold text-primary">{formatCOP(laborValue + clientFee)}</dd>
+            <dd className="font-semibold text-primary">{formatCOP(laborValue + feeLaborOnly)}</dd>
           </div>
+          <p className="text-xs text-slate-500">
+            {formatCOP(laborValue)} + tarifa {clientFeePct} % ({formatCOP(feeLaborOnly)})
+          </p>
           {hasMaterials ? (
-            <div className="flex justify-between gap-3">
-              <dt className="font-medium">Todo incluido (+ materiales)</dt>
-              <dd className="font-semibold text-primary">{formatCOP(laborValue + clientFee + materialsValue)}</dd>
-            </div>
+            <>
+              <div className="flex justify-between gap-3 border-t border-border pt-1.5">
+                <dt className="font-medium">Todo incluido</dt>
+                <dd className="font-semibold text-primary">{formatCOP(laborValue + materialsValue + feeAllInclusive)}</dd>
+              </div>
+              <p className="text-xs text-slate-500">
+                {formatCOP(laborValue)} + materiales {formatCOP(materialsValue)} + tarifa {clientFeePct} % ({formatCOP(feeAllInclusive)})
+              </p>
+            </>
           ) : (
             <p className="text-xs text-slate-500">El experto no listó materiales: hay una sola opción y se cobra de una vez.</p>
           )}
@@ -139,17 +141,18 @@ export function QuoteReviewForm({
         <div className="space-y-1.5 lg:border-l lg:border-border lg:pl-4">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Ganancia de Xpertos</p>
           <div className="flex justify-between gap-3">
-            <dt className="text-slate-600">Tarifa del cliente</dt>
-            <dd>{formatCOP(clientFee)}</dd>
+            <dt className="text-slate-600">Si elige solo mano de obra</dt>
+            <dd className="font-semibold">{formatCOP(feeLaborOnly + commissionAmount)}</dd>
           </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-slate-600">Comisión del experto</dt>
-            <dd>{formatCOP(commissionAmount)}</dd>
-          </div>
-          <div className="flex justify-between gap-3 border-t border-border pt-1.5 font-semibold">
-            <dt>Total ({clientFeePct + commissionPct} %)</dt>
-            <dd>{formatCOP(clientFee + commissionAmount)}</dd>
-          </div>
+          {hasMaterials && (
+            <div className="flex justify-between gap-3">
+              <dt className="text-slate-600">Si elige todo incluido</dt>
+              <dd className="font-semibold">{formatCOP(feeAllInclusive + commissionAmount)}</dd>
+            </div>
+          )}
+          <p className="text-xs text-slate-500">
+            Tarifa del cliente ({clientFeePct} % de la opción) + comisión del experto ({commissionPct} % de su mano de obra).
+          </p>
         </div>
       </dl>
 
