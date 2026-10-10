@@ -61,7 +61,7 @@ export default async function DashboardPage() {
         <StatCard
           label="Contratos sin firmar"
           value={dashboard.contracts_pending ?? 0}
-          hint="Pendientes de firma de alguna parte"
+          hint="Pendientes de la firma del cliente"
         />
         <StatCard
           label="Expertos activos"

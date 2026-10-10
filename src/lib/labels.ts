@@ -122,7 +122,7 @@ export const PAYMENT_STATUS: Record<PaymentStatus, { label: string; tone: Tone }
 
 export const CONTRACT_STATUS: Record<ContractStatus, { label: string; tone: Tone }> = {
   draft: { label: "Borrador", tone: "slate" },
-  pending_signatures: { label: "Pendiente de firmas", tone: "amber" },
+  pending_signatures: { label: "Pendiente de firma del cliente", tone: "amber" },
   signed: { label: "Firmado", tone: "green" },
   void: { label: "Anulado", tone: "red" },
 };

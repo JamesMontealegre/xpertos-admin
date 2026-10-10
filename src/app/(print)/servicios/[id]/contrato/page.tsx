@@ -95,11 +95,16 @@ export default async function ContractPrintPage(props: PageProps<"/servicios/[id
             <section className="mt-10 break-inside-avoid border-t border-border pt-6">
               <h2 className="text-sm font-semibold">Aceptación electrónica</h2>
               <div className="mt-4 grid gap-6 sm:grid-cols-2 print:grid-cols-2">
-                {(["client", "expert"] as const).map((role) => {
-                  const sig = signatures.find((s) => s.signer_role === role);
+                {/* Contrato entre Xpertos y el cliente: Xpertos lo emite y acepta; el cliente lo acepta en la app. */}
+                <div className="border-t border-slate-400 pt-2 text-xs">
+                  <p className="font-medium text-foreground">Xpertos</p>
+                  <p className="text-slate-600">Emitido y aceptado al generarlo en la plataforma · versión {contract.version}</p>
+                </div>
+                {(() => {
+                  const sig = signatures.find((s) => s.signer_role === "client");
                   return (
-                    <div key={role} className="border-t border-slate-400 pt-2 text-xs">
-                      <p className="font-medium text-foreground">{ROLE_LABEL[role]}</p>
+                    <div className="border-t border-slate-400 pt-2 text-xs">
+                      <p className="font-medium text-foreground">{ROLE_LABEL.client}</p>
                       {sig ? (
                         <p className="text-slate-600">
                           {sig.signer?.full_name ?? ""} · aceptado el {formatDateTime(sig.signed_at)} · IP {sig.ip ?? "—"}
@@ -109,7 +114,7 @@ export default async function ContractPrintPage(props: PageProps<"/servicios/[id
                       )}
                     </div>
                   );
-                })}
+                })()}
               </div>
               <p className="mt-6 break-all text-[10px] text-slate-400">Hash SHA-256 del documento: {contract.body_hash}</p>
             </section>

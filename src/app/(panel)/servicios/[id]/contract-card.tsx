@@ -24,8 +24,8 @@ export type ContractWithSignatures = Database["public"]["Tables"]["contracts"]["
 };
 
 /**
- * Contrato del servicio. Se genera solo al aprobar la cotización y se regenera al confirmar el pago
- * (pasa a ser el contrato de inicio, descargable) y cuando el experto cambia la periodicidad.
+ * Contrato del servicio entre Xpertos y el cliente (el experto no es parte ni lo firma). Se genera al pasar a
+ * Pendiente de pago y se regenera al confirmar el pago (pasa a ser el contrato de inicio, descargable).
  */
 export function ContractCard({
   serviceId,
@@ -80,8 +80,11 @@ export function ContractCard({
           />
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Firmas</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Contrato entre Xpertos y el cliente: Xpertos lo emite y acepta al generarlo; queda firmado cuando el cliente lo acepta en la app.
+            </p>
             {contract.signatures.length === 0 ? (
-              <p className="mt-1 text-sm text-slate-500">Ninguna de las partes ha firmado esta versión (la firma es opcional).</p>
+              <p className="mt-1 text-sm text-slate-500">El cliente aún no ha firmado esta versión.</p>
             ) : (
               <ul className="mt-1 divide-y divide-border text-sm">
                 {contract.signatures.map((sig) => (
@@ -120,10 +123,10 @@ export function ContractCard({
               pendingLabel="Generando…"
             >
               <Alert tone="warning">
-                Al regenerar se invalidan las firmas actuales: las partes deberán aceptar de nuevo el contrato.
+                Al regenerar se invalida la firma actual: el cliente deberá aceptar de nuevo el contrato.
               </Alert>
               <Field label="Términos adicionales (opcional)" htmlFor="extra_terms">
-                <Textarea id="extra_terms" name="extra_terms" placeholder="Condiciones particulares acordadas con las partes." />
+                <Textarea id="extra_terms" name="extra_terms" placeholder="Condiciones particulares acordadas con el cliente." />
               </Field>
             </ActionDialog>
           </div>
