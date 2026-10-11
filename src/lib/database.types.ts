@@ -1047,6 +1047,74 @@ export type Database = {
           },
         ]
       }
+      service_orders: {
+        Row: {
+          accepted_at: string | null
+          accepted_ip: string | null
+          accepted_user_agent: string | null
+          body_hash: string
+          body_md: string
+          created_at: string
+          expert_id: string
+          id: string
+          service_id: string
+          status: string
+          updated_at: string
+          version: number
+        }
+        ComputedFields: never
+        Insert: {
+          accepted_at?: string | null
+          accepted_ip?: string | null
+          accepted_user_agent?: string | null
+          body_hash: string
+          body_md: string
+          created_at?: string
+          expert_id: string
+          id?: string
+          service_id: string
+          status?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_ip?: string | null
+          accepted_user_agent?: string | null
+          body_hash?: string
+          body_md?: string
+          created_at?: string
+          expert_id?: string
+          id?: string
+          service_id?: string
+          status?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_orders_expert_id_fkey"
+            columns: ["expert_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_orders_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: true
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "service_orders_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: true
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_photos: {
         Row: {
           created_at: string
@@ -1603,6 +1671,29 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _build_service_order: {
+        Args: { p_service_id: string }
+        Returns: {
+          accepted_at: string | null
+          accepted_ip: string | null
+          accepted_user_agent: string | null
+          body_hash: string
+          body_md: string
+          created_at: string
+          expert_id: string
+          id: string
+          service_id: string
+          status: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "service_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       _emails_enabled: { Args: Record<PropertyKey, never>; Returns: boolean }
       _enqueue_admin_email: {
         Args: {
@@ -1681,6 +1772,29 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "contract_sign_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      accept_service_order: {
+        Args: { p_body_hash: string; p_order_id: string; p_user_agent?: string }
+        Returns: {
+          accepted_at: string | null
+          accepted_ip: string | null
+          accepted_user_agent: string | null
+          body_hash: string
+          body_md: string
+          created_at: string
+          expert_id: string
+          id: string
+          service_id: string
+          status: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "service_orders"
           isOneToOne: true
           isSetofReturn: false
         }

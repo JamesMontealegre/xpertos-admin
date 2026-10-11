@@ -42,6 +42,7 @@ import { PaymentsCard } from "./payments-card";
 import { PayoutsCard } from "./payouts-card";
 import { QuoteCard, expertNetEstimate, type QuoteWithLines } from "./quote-card";
 import { ScheduleCard } from "./schedule-card";
+import { SERVICE_ORDER_STATUS, ServiceOrderCard } from "./service-order-card";
 import { Timeline, type TimelineEvent } from "./timeline";
 import { NextSteps, Step } from "./next-steps";
 import { WorkLogsCard, type WorkLogView } from "./work-logs-card";
@@ -50,7 +51,7 @@ import { cancelService, moveService, pauseService, resumeService } from "../acti
 export const metadata: Metadata = { title: "Detalle de servicio" };
 
 type Slot = { date?: string; from?: string; to?: string };
-type SectionKey = "review" | "assign" | "quote" | "payments" | "schedule" | "work" | "payout" | "contract" | "details" | "photos" | "reviews";
+type SectionKey = "review" | "assign" | "quote" | "payments" | "schedule" | "work" | "payout" | "contract" | "order" | "details" | "photos" | "reviews";
 
 /**
  * Orden de las tarjetas según lo que más le sirve al equipo en cada estado: primero la acción que toca
@@ -61,15 +62,15 @@ const ORDER: Record<ServiceStatus, SectionKey[]> = {
   requested: ["assign", "details", "photos"],
   assigned: ["assign", "quote", "details", "photos"],
   quoting: ["quote", "details", "photos"],
-  pending_payment: ["payments", "contract", "quote", "details", "photos"],
-  scheduled: ["schedule", "quote", "contract", "payments", "payout", "details", "photos"],
-  in_progress: ["work", "schedule", "payout", "quote", "contract", "payments", "details", "photos"],
-  paused: ["work", "schedule", "payout", "quote", "contract", "payments", "details", "photos"],
-  under_review: ["review", "work", "quote", "contract", "payments", "schedule", "payout", "details", "photos"],
-  completed: ["payout", "reviews", "work", "quote", "contract", "payments", "schedule", "details", "photos"],
-  cancelled: ["details", "quote", "payments", "contract", "schedule", "work", "payout", "photos", "reviews"],
+  pending_payment: ["payments", "contract", "order", "quote", "details", "photos"],
+  scheduled: ["schedule", "quote", "order", "contract", "payments", "payout", "details", "photos"],
+  in_progress: ["work", "schedule", "payout", "order", "quote", "contract", "payments", "details", "photos"],
+  paused: ["work", "schedule", "payout", "order", "quote", "contract", "payments", "details", "photos"],
+  under_review: ["review", "work", "quote", "order", "contract", "payments", "schedule", "payout", "details", "photos"],
+  completed: ["payout", "reviews", "work", "quote", "order", "contract", "payments", "schedule", "details", "photos"],
+  cancelled: ["details", "quote", "payments", "contract", "order", "schedule", "work", "payout", "photos", "reviews"],
 };
-const BASE_ORDER: SectionKey[] = ["review", "assign", "work", "schedule", "payout", "quote", "payments", "contract", "details", "photos", "reviews"];
+const BASE_ORDER: SectionKey[] = ["review", "assign", "work", "schedule", "payout", "quote", "payments", "contract", "order", "details", "photos", "reviews"];
 
 /** Ancla de cada tarjeta (los botones de "Qué sigue" llevan hasta ella). */
 const ANCHOR: Record<SectionKey, string> = {
@@ -81,6 +82,7 @@ const ANCHOR: Record<SectionKey, string> = {
   work: "jornadas",
   payout: "pago-experto",
   contract: "contrato",
+  order: "orden",
   details: "datos",
   photos: "fotos",
   reviews: "resenas",
@@ -127,6 +129,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     { data: candidates },
     { data: categoryRows },
     { data: holidays },
+    { data: serviceOrder },
   ] = await Promise.all([
     service.expert_id
       ? supabase
@@ -182,6 +185,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     service.start_date
       ? supabase.from("holidays").select("day").gte("day", service.start_date).lte("day", today)
       : Promise.resolve({ data: null }),
+    supabase.from("service_orders").select("*").eq("service_id", id).maybeSingle(),
   ]);
 
   // Servicios activos de cada candidato del pool.
@@ -469,6 +473,10 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     });
   }
 
+  if (serviceOrder) {
+    sections.push({ key: "order", node: <ServiceOrderCard order={serviceOrder} /> });
+  }
+
   sections.push({
     key: "details",
     node: (
@@ -580,6 +588,16 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
   const expertName = expertProfile?.profile?.full_name || "el experto";
   const expertPhone = expertProfile?.profile?.phone;
 
+  const orderPending = serviceOrder?.status === "pending";
+  const orderStep = serviceOrder && serviceOrder.status !== "void" && (
+    <Step
+      state={orderPending ? "waiting" : "done"}
+      title={orderPending ? "Orden de servicio pendiente de aceptación del experto" : "El experto aceptó la orden de servicio"}
+      detail={orderPending ? "Sin aceptarla no puede registrar jornadas." : undefined}
+      action={{ label: "Ver orden", href: `#${ANCHOR.order}` }}
+    />
+  );
+
   const steps: React.ReactNode = (() => {
     switch (status) {
       case "requested":
@@ -627,6 +645,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
               detail={contractSigned ? undefined : "Le llegó el enlace para firmar por correo; también puede firmar en la app."}
               action={{ label: "Ver contrato", href: `#${ANCHOR.contract}` }}
             />
+            {orderStep}
           </>
         );
       case "scheduled":
@@ -644,12 +663,14 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
             {typedContract && !contractSigned && (
               <Step state="waiting" title={startAct ? "Firma del acta de inicio pendiente" : "Firma del contrato pendiente"} action={{ label: "Ver contrato", href: `#${ANCHOR.contract}` }} />
             )}
+            {orderStep}
           </>
         );
       case "in_progress":
       case "paused":
         return (
           <>
+            {orderPending && orderStep}
             <Step
               state={missingDays.length > 0 ? "alert" : "done"}
               title={missingDays.length > 0 ? `${missingDays.length === 1 ? "1 día hábil" : `${missingDays.length} días hábiles`} sin registro de jornada` : "Jornadas al día"}
@@ -697,6 +718,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     { label: "Ganancia Xpertos", value: xpertosGain != null ? formatCOP(xpertosGain) : null },
     { label: "Pago del cliente", value: stageList.length > 0 ? clientPayment : null },
     { label: "Contrato", value: typedContract ? CONTRACT_STATUS[typedContract.status].label : null },
+    { label: "Orden de servicio", value: serviceOrder ? SERVICE_ORDER_STATUS[serviceOrder.status]?.label ?? serviceOrder.status : null },
     { label: "Visita acordada", value: service.scheduled_at && assigning ? formatDateTime(service.scheduled_at) : null },
     { label: "Inicio de obra", value: schedule?.start_date ? formatDate(schedule.start_date) : null },
     { label: "Fin estimado", value: schedule?.estimated_end_date ? formatDate(schedule.estimated_end_date) : null },

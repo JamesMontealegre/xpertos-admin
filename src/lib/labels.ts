@@ -233,6 +233,8 @@ export const EVENT_TYPE: Record<string, string> = {
   payment_rejected: "Pago rechazado",
   contract_created: "Contrato generado",
   contract_signed: "Contrato firmado",
+  service_order_created: "Orden de servicio generada",
+  service_order_accepted: "Orden de servicio aceptada por el experto",
   review_created: "Reseña publicada",
   quote_submitted: "Cotización enviada",
   quote_presented: "Cotización presentada al cliente",
