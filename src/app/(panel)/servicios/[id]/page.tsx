@@ -21,6 +21,7 @@ import {
   SERVICE_STATUS,
   payoutMethodLabel,
   type ServiceStatus,
+  paymentPlanLabel,
   PRICING_MODE,
   CONTRACT_STATUS,
 } from "@/lib/labels";
@@ -414,7 +415,15 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
   if (stageList.length > 0) {
     sections.push({
       key: "payments",
-      node: <PaymentsCard serviceId={service.id} status={status} stages={stageList} payments={paymentRows} />,
+      node: (
+        <PaymentsCard
+          serviceId={service.id}
+          status={status}
+          stages={stageList}
+          payments={paymentRows}
+          planLabel={paymentPlanLabel(stageList, service.installment_frequency)}
+        />
+      ),
     });
   }
 
@@ -578,9 +587,46 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
   const chosen = quoteWithLines?.total != null;
   const xpertosGain =
     chosen && labor != null && netEstimate != null ? Number(quoteWithLines?.client_fee_total ?? 0) + (labor - netEstimate) : null;
-  const allPaid = stageList.length > 0 && stageList.every((s) => s.status === "paid");
+  // Plan de pagos del cliente: lo verificado se aplica en orden; anticipo (o pago único) antes de iniciar y cuotas durante la obra.
+  const stagesTotal = stageList.reduce((sum, s) => sum + Number(s.amount), 0);
+  const verifiedTotal = paymentRows.filter((p) => p.status === "verified").reduce((sum, p) => sum + Number(p.amount), 0);
+  const hasInstallments = stageList.some((s) => s.kind === "installment");
+  const advanceTotal = stageList.filter((s) => s.kind !== "installment").reduce((sum, s) => sum + Number(s.amount), 0);
+  const overdueStages = stageList.filter((s) => s.status !== "paid" && s.status !== "pending" && s.due_date != null && s.due_date < today);
+  const openInstallment = stageList.find((s) => s.kind === "installment" && (s.status === "awaiting_payment" || s.status === "rejected"));
+  const planLabel = paymentPlanLabel(stageList, service.installment_frequency);
+  const allPaid = stageList.length > 0 && verifiedTotal >= stagesTotal;
   const proofRejected = !allPaid && !hasProofToVerify && stageList.some((s) => s.status === "rejected");
-  const clientPayment = allPaid ? "Verificado" : hasProofToVerify ? "Comprobante por verificar" : proofRejected ? "Comprobante rechazado" : "Pendiente";
+  const clientPayment = allPaid
+    ? "Verificado"
+    : hasProofToVerify
+      ? "Comprobante por verificar"
+      : overdueStages.length > 0
+        ? "Pago vencido"
+        : proofRejected
+          ? "Comprobante rechazado"
+          : verifiedTotal > 0
+            ? `Pagado ${formatCOP(verifiedTotal)} de ${formatCOP(stagesTotal)}`
+            : "Pendiente";
+  // Cuotas durante la obra: vencidas (el agente decide si pausa), comprobante por verificar o cuota habilitada.
+  const installmentStep =
+    overdueStages.length > 0 ? (
+      <Step
+        state="alert"
+        title={`${overdueStages.length === 1 ? "1 pago vencido" : `${overdueStages.length} pagos vencidos`} del cliente`}
+        detail={`${overdueStages.map((s) => s.name).join(", ")} · venció el ${formatDate(overdueStages[0].due_date)}. Contacta al cliente; si no paga, decide si pausas la obra.`}
+        action={{ label: "Ver pagos", href: `#${ANCHOR.payments}` }}
+      />
+    ) : hasProofToVerify ? (
+      <Step state="todo" title="Verifica el comprobante del cliente en el banco" action={{ label: "Verificar pago", href: `#${ANCHOR.payments}` }} />
+    ) : openInstallment ? (
+      <Step
+        state="waiting"
+        title={`${openInstallment.name} habilitada: ${formatCOP(openInstallment.amount)}`}
+        detail={openInstallment.due_date ? `Vence el ${formatDate(openInstallment.due_date)}.` : undefined}
+        action={{ label: "Ver pagos", href: `#${ANCHOR.payments}` }}
+      />
+    ) : null;
   const typedContract = (contract ?? null) as ContractWithSignatures | null;
   const contractSigned = typedContract?.status === "signed";
   const startAct = Boolean(typedContract?.body_md.includes("acta de inicio"));
@@ -635,8 +681,20 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
           <>
             <Step
               state={hasProofToVerify ? "todo" : proofRejected ? "alert" : "waiting"}
-              title={hasProofToVerify ? "Verifica el comprobante en el banco" : proofRejected ? "El cliente debe subir otro comprobante" : "Esperando el comprobante del cliente"}
-              detail={`Total ${formatCOP(service.estimated_price)}.`}
+              title={
+                hasProofToVerify
+                  ? "Verifica el comprobante en el banco"
+                  : proofRejected
+                    ? "El cliente debe pagar de nuevo"
+                    : hasInstallments
+                      ? "Esperando el anticipo del cliente"
+                      : "Esperando el pago del cliente"
+              }
+              detail={
+                hasInstallments
+                  ? `Anticipo ${formatCOP(advanceTotal)} de ${formatCOP(stagesTotal)} · recibido ${formatCOP(verifiedTotal)}. Los pagos en línea se registran solos.`
+                  : `Total ${formatCOP(stagesTotal)} · recibido ${formatCOP(verifiedTotal)}. Los pagos en línea se registran solos.`
+              }
               action={hasProofToVerify ? { label: "Verificar pago", href: `#${ANCHOR.payments}` } : null}
             />
             <Step
@@ -660,6 +718,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
               />
             )}
             <Step state="waiting" title={hint ?? "Programado"} detail="El servicio inicia solo en la fecha acordada." action={{ label: "Ver fechas", href: `#${ANCHOR.schedule}` }} />
+            {installmentStep}
             {typedContract && !contractSigned && (
               <Step state="waiting" title={startAct ? "Firma del acta de inicio pendiente" : "Firma del contrato pendiente"} action={{ label: "Ver contrato", href: `#${ANCHOR.contract}` }} />
             )}
@@ -671,6 +730,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
         return (
           <>
             {orderPending && orderStep}
+            {installmentStep}
             <Step
               state={missingDays.length > 0 ? "alert" : "done"}
               title={missingDays.length > 0 ? `${missingDays.length === 1 ? "1 día hábil" : `${missingDays.length} días hábiles`} sin registro de jornada` : "Jornadas al día"}
@@ -689,12 +749,15 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
         );
       case "under_review":
         return (
-          <Step
-            state={reviewOverdue ? "alert" : "todo"}
-            title="Verifica con el cliente y finaliza o devuelve a ejecución"
-            detail={service.review_due_date ? `Plazo: ${formatDate(service.review_due_date)}${reviewOverdue ? " · vencido" : ""}.` : undefined}
-            action={{ label: "Verificar", href: `#${ANCHOR.review}` }}
-          />
+          <>
+            <Step
+              state={reviewOverdue ? "alert" : "todo"}
+              title="Verifica con el cliente y finaliza o devuelve a ejecución"
+              detail={service.review_due_date ? `Plazo: ${formatDate(service.review_due_date)}${reviewOverdue ? " · vencido" : ""}.` : undefined}
+              action={{ label: "Verificar", href: `#${ANCHOR.review}` }}
+            />
+            {installmentStep}
+          </>
         );
       case "completed":
         return (
@@ -717,6 +780,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     { label: "Neto para el experto", value: netEstimate != null ? formatCOP(netEstimate) : null },
     { label: "Ganancia Xpertos", value: xpertosGain != null ? formatCOP(xpertosGain) : null },
     { label: "Pago del cliente", value: stageList.length > 0 ? clientPayment : null },
+    { label: "Plan de pagos", value: planLabel },
     { label: "Contrato", value: typedContract ? CONTRACT_STATUS[typedContract.status].label : null },
     { label: "Orden de servicio", value: serviceOrder ? SERVICE_ORDER_STATUS[serviceOrder.status]?.label ?? serviceOrder.status : null },
     { label: "Visita acordada", value: service.scheduled_at && assigning ? formatDateTime(service.scheduled_at) : null },

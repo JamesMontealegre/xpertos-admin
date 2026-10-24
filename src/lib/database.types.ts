@@ -699,6 +699,91 @@ export type Database = {
           },
         ]
       }
+      online_payments: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          id: string
+          payload: Json | null
+          payment_id: string | null
+          payment_method_type: string | null
+          provider_transaction_id: string | null
+          reference: string
+          service_id: string
+          stage_id: string | null
+          status: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          payment_id?: string | null
+          payment_method_type?: string | null
+          provider_transaction_id?: string | null
+          reference: string
+          service_id: string
+          stage_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          id?: string
+          payload?: Json | null
+          payment_id?: string | null
+          payment_method_type?: string | null
+          provider_transaction_id?: string | null
+          reference?: string
+          service_id?: string
+          stage_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "online_payments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_payments_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_payments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "online_payments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "online_payments_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "service_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_accounts: {
         Row: {
           account_number: string
@@ -733,6 +818,31 @@ export type Database = {
           holder_id?: string | null
           id?: string
           sort_order?: number
+        }
+        Relationships: []
+      }
+      payment_settings: {
+        Row: {
+          advance_pct: number
+          daily_limit: number
+          id: boolean
+          max_payment: number
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          advance_pct?: number
+          daily_limit?: number
+          id?: boolean
+          max_payment?: number
+          updated_at?: string
+        }
+        Update: {
+          advance_pct?: number
+          daily_limit?: number
+          id?: boolean
+          max_payment?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1331,7 +1441,11 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          kind: string
           name: string
+          opens_on: string | null
+          period_end_day: number | null
+          period_start_day: number | null
           position: number
           service_id: string
           status: Database["public"]["Enums"]["stage_status"]
@@ -1344,7 +1458,11 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          kind?: string
           name: string
+          opens_on?: string | null
+          period_end_day?: number | null
+          period_start_day?: number | null
           position?: number
           service_id: string
           status?: Database["public"]["Enums"]["stage_status"]
@@ -1356,7 +1474,11 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          kind?: string
           name?: string
+          opens_on?: string | null
+          period_end_day?: number | null
+          period_start_day?: number | null
           position?: number
           service_id?: string
           status?: Database["public"]["Enums"]["stage_status"]
@@ -1399,8 +1521,11 @@ export type Database = {
           estimated_price: number | null
           expert_id: string | null
           id: string
+          installment_frequency:
+            Database["public"]["Enums"]["installment_frequency"] | null
           pause_reason: string | null
           payment_date: string | null
+          payment_plan: Database["public"]["Enums"]["payment_plan"] | null
           payout_frequency: Database["public"]["Enums"]["payout_frequency"]
           pricing_mode: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date: string | null
@@ -1431,8 +1556,11 @@ export type Database = {
           estimated_price?: number | null
           expert_id?: string | null
           id?: string
+          installment_frequency?:
+            Database["public"]["Enums"]["installment_frequency"] | null
           pause_reason?: string | null
           payment_date?: string | null
+          payment_plan?: Database["public"]["Enums"]["payment_plan"] | null
           payout_frequency?: Database["public"]["Enums"]["payout_frequency"]
           pricing_mode?: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date?: string | null
@@ -1462,8 +1590,11 @@ export type Database = {
           estimated_price?: number | null
           expert_id?: string | null
           id?: string
+          installment_frequency?:
+            Database["public"]["Enums"]["installment_frequency"] | null
           pause_reason?: string | null
           payment_date?: string | null
+          payment_plan?: Database["public"]["Enums"]["payment_plan"] | null
           payout_frequency?: Database["public"]["Enums"]["payout_frequency"]
           pricing_mode?: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date?: string | null
@@ -1602,20 +1733,23 @@ export type Database = {
           estimated_days: number | null
           estimated_end_date: string | null
           payment_date: string | null
-          payout_frequency:
-            Database["public"]["Enums"]["payout_frequency"] | null
+          payout_frequency: Database["public"]["Enums"]["payout_frequency"]
           pricing_mode: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date: string | null
-          service_id: string | null
+          service_id: string
           start_date: string | null
           start_offset_days: number | null
-          status: Database["public"]["Enums"]["service_status"] | null
+          status: Database["public"]["Enums"]["service_status"]
         }
         ComputedFields: never
         Relationships: []
       }
     }
     Functions: {
+      _apply_payments_to_stages: {
+        Args: { p_extra?: number; p_service_id: string }
+        Returns: undefined
+      }
       _apply_pricing_mode: {
         Args: {
           p_actor: string
@@ -1694,6 +1828,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _create_payment_stages: {
+        Args: { p_service_id: string }
+        Returns: undefined
+      }
       _emails_enabled: { Args: Record<PropertyKey, never>; Returns: boolean }
       _enqueue_admin_email: {
         Args: {
@@ -1749,6 +1887,14 @@ export type Database = {
         Returns: Json
       }
       _request_ip: { Args: Record<PropertyKey, never>; Returns: string }
+      _schedule_installments: {
+        Args: { p_service_id: string }
+        Returns: undefined
+      }
+      _schedule_when_advance_paid: {
+        Args: { p_at: string; p_service_id: string }
+        Returns: undefined
+      }
       _service_email_data: { Args: { p_service: string }; Returns: Json }
       _sha256: { Args: { p: string }; Returns: string }
       _sign_request_by_token: {
@@ -1829,8 +1975,11 @@ export type Database = {
           estimated_price: number | null
           expert_id: string | null
           id: string
+          installment_frequency:
+            Database["public"]["Enums"]["installment_frequency"] | null
           pause_reason: string | null
           payment_date: string | null
+          payment_plan: Database["public"]["Enums"]["payment_plan"] | null
           payout_frequency: Database["public"]["Enums"]["payout_frequency"]
           pricing_mode: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date: string | null
@@ -1942,8 +2091,11 @@ export type Database = {
           estimated_price: number | null
           expert_id: string | null
           id: string
+          installment_frequency:
+            Database["public"]["Enums"]["installment_frequency"] | null
           pause_reason: string | null
           payment_date: string | null
+          payment_plan: Database["public"]["Enums"]["payment_plan"] | null
           payout_frequency: Database["public"]["Enums"]["payout_frequency"]
           pricing_mode: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date: string | null
@@ -1969,6 +2121,53 @@ export type Database = {
       can_log_work: {
         Args: { p_service_id: string; p_work_date: string }
         Returns: boolean
+      }
+      choose_payment_plan: {
+        Args: {
+          p_frequency?: Database["public"]["Enums"]["installment_frequency"]
+          p_plan: Database["public"]["Enums"]["payment_plan"]
+          p_service_id: string
+        }
+        Returns: {
+          address: string | null
+          assigned_at: string | null
+          assigned_by: string | null
+          availability: NonNullable<Json>
+          cancel_reason: string | null
+          category_id: string
+          city: string | null
+          client_fee_pct: number
+          client_id: string
+          closed_at: string | null
+          closing_notes: string | null
+          commission_pct: number
+          completed_at: string | null
+          created_at: string
+          description: string
+          estimated_price: number | null
+          expert_id: string | null
+          id: string
+          installment_frequency:
+            Database["public"]["Enums"]["installment_frequency"] | null
+          pause_reason: string | null
+          payment_date: string | null
+          payment_plan: Database["public"]["Enums"]["payment_plan"] | null
+          payout_frequency: Database["public"]["Enums"]["payout_frequency"]
+          pricing_mode: Database["public"]["Enums"]["pricing_mode"] | null
+          review_due_date: string | null
+          scheduled_at: string | null
+          start_date: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["service_status"]
+          title: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "services"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       choose_pricing_mode: {
         Args: {
@@ -2056,8 +2255,11 @@ export type Database = {
           estimated_price: number | null
           expert_id: string | null
           id: string
+          installment_frequency:
+            Database["public"]["Enums"]["installment_frequency"] | null
           pause_reason: string | null
           payment_date: string | null
+          payment_plan: Database["public"]["Enums"]["payment_plan"] | null
           payout_frequency: Database["public"]["Enums"]["payout_frequency"]
           pricing_mode: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date: string | null
@@ -2145,6 +2347,18 @@ export type Database = {
       }
       has_expert_application: { Args: { p_user_id: string }; Returns: boolean }
       has_services_as_client: { Args: { p_user_id: string }; Returns: boolean }
+      installment_frequencies_for: {
+        Args: { p_days: number }
+        Returns: Database["public"]["Enums"]["installment_frequency"][]
+      }
+      installment_frequency_label: {
+        Args: { p: Database["public"]["Enums"]["installment_frequency"] }
+        Returns: string
+      }
+      installment_period_days: {
+        Args: { p: Database["public"]["Enums"]["installment_frequency"] }
+        Returns: number
+      }
       is_admin: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_business_day: { Args: { p_day: string }; Returns: boolean }
       is_service_party: { Args: { p_service_id: string }; Returns: boolean }
@@ -2154,6 +2368,26 @@ export type Database = {
         Returns: undefined
       }
       open_next_stage: { Args: { p_service_id: string }; Returns: undefined }
+      payment_plan_options: { Args: { p_service_id: string }; Returns: Json }
+      payment_plan_schedule: {
+        Args: {
+          p_advance_pct: number
+          p_days: number
+          p_frequency: Database["public"]["Enums"]["installment_frequency"]
+          p_max: number
+          p_plan: Database["public"]["Enums"]["payment_plan"]
+          p_total: number
+        }
+        Returns: {
+          end_day: number
+          pos: number
+          stage_amount: number
+          stage_description: string
+          stage_kind: string
+          stage_name: string
+          start_day: number
+        }[]
+      }
       payout_frequency_label: {
         Args: { p: Database["public"]["Enums"]["payout_frequency"] }
         Returns: string
@@ -2165,6 +2399,10 @@ export type Database = {
       pricing_mode_label: {
         Args: { p: Database["public"]["Enums"]["pricing_mode"] }
         Returns: string
+      }
+      process_installments: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       promote_to_admin: { Args: { p_email: string }; Returns: string }
       reapply_application: { Args: Record<PropertyKey, never>; Returns: string }
@@ -2261,8 +2499,11 @@ export type Database = {
           estimated_price: number | null
           expert_id: string | null
           id: string
+          installment_frequency:
+            Database["public"]["Enums"]["installment_frequency"] | null
           pause_reason: string | null
           payment_date: string | null
+          payment_plan: Database["public"]["Enums"]["payment_plan"] | null
           payout_frequency: Database["public"]["Enums"]["payout_frequency"]
           pricing_mode: Database["public"]["Enums"]["pricing_mode"] | null
           review_due_date: string | null
@@ -2392,7 +2633,10 @@ export type Database = {
         | "recommendation_letter"
         | "bank_certificate"
       email_status: "pending" | "sending" | "sent" | "failed"
-      payment_method: "transfer" | "cash" | "mercado_pago" | "tucompra"
+      installment_frequency: "weekly" | "biweekly" | "monthly"
+      payment_method:
+        "transfer" | "cash" | "mercado_pago" | "tucompra" | "wompi"
+      payment_plan: "single" | "installments"
       payment_status: "submitted" | "verified" | "rejected"
       payout_frequency:
         "daily" | "weekly" | "biweekly" | "monthly" | "on_completion"
@@ -2563,7 +2807,9 @@ export const Constants = {
         "bank_certificate",
       ],
       email_status: ["pending", "sending", "sent", "failed"],
-      payment_method: ["transfer", "cash", "mercado_pago", "tucompra"],
+      installment_frequency: ["weekly", "biweekly", "monthly"],
+      payment_method: ["transfer", "cash", "mercado_pago", "tucompra", "wompi"],
+      payment_plan: ["single", "installments"],
       payment_status: ["submitted", "verified", "rejected"],
       payout_frequency: [
         "daily",

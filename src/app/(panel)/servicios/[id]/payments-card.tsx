@@ -7,52 +7,57 @@ import { FilePreview } from "@/components/ui/file-preview";
 import { Field, Textarea } from "@/components/ui/input";
 import { EmptyRow, Table, TBody, Td, THead, Tr } from "@/components/ui/table";
 import type { Database } from "@/lib/database.types";
-import { formatCOP, formatDateTime } from "@/lib/format";
+import { formatCOP, formatDate, formatDateTime, todayCO } from "@/lib/format";
 import { PAYMENT_METHOD, PAYMENT_STATUS, STAGE_STATUS, type ServiceStatus } from "@/lib/labels";
 import { reviewPayment } from "../actions";
 
 type StageRow = Database["public"]["Tables"]["service_stages"]["Row"];
 type PaymentRow = Database["public"]["Tables"]["payments"]["Row"] & { url: string | null };
 
-/** Cobro al cliente ("Pago del servicio") con sus comprobantes: verificar o rechazar. */
+/**
+ * Plan de pagos del cliente ("Pago del servicio"): pago único o anticipo y cuotas, con sus comprobantes. Los pagos en
+ * línea (Wompi) llegan verificados; las transferencias se verifican o rechazan aquí. Lo pagado se aplica en orden.
+ */
 export function PaymentsCard({
   serviceId,
   status,
   stages,
   payments,
+  planLabel,
 }: {
   serviceId: string;
   status: ServiceStatus;
   stages: StageRow[];
   payments: PaymentRow[];
+  planLabel: string | null;
 }) {
-  const paid = stages.filter((s) => s.status === "paid").length;
+  const total = stages.reduce((sum, s) => sum + Number(s.amount), 0);
+  const verified = payments.filter((p) => p.status === "verified").reduce((sum, p) => sum + Number(p.amount), 0);
   const awaitingProof = status === "pending_payment" && payments.every((p) => p.status !== "submitted");
+  const today = todayCO();
 
   return (
     <Card>
       <CardHeader
         title="Pago del servicio"
-        description={
-          stages.length === 1
-            ? `Un solo cobro por el total aprobado · ${paid ? "pagado" : "sin pagar"}`
-            : `${paid} de ${stages.length} cobros pagados`
-        }
+        description={`${planLabel ?? "Sin plan"} · pagado ${formatCOP(verified)} de ${formatCOP(total)}`}
       />
-      {status === "pending_payment" && (
+      {(status === "pending_payment" || payments.some((p) => p.status === "submitted")) && (
         <CardBody className="space-y-2 border-b border-border">
           <Alert tone="info">
-            Antes de verificar, revisa en el banco que la transacción haya llegado a una de las cuentas de recaudo de
-            Xpertos por el valor del cobro. Al verificar, el servicio pasa solo a Programado y se fija la fecha de inicio.
+            Los pagos en línea (Wompi) se registran solos. Antes de verificar una transferencia, revisa en el banco que haya
+            llegado a una cuenta de recaudo de Xpertos por ese valor. Al cubrir {stages.some((s) => s.kind === "installment") ? "el anticipo" : "el total"}, el
+            servicio pasa solo a Programado y se fija la fecha de inicio.
           </Alert>
           {awaitingProof && <p className="text-sm text-slate-500">El cliente aún no ha subido un comprobante por verificar.</p>}
         </CardBody>
       )}
       <Table>
-        <THead columns={["#", "Cobro", "Monto", "Estado"]} />
+        <THead columns={["#", "Pago", "Fecha", "Monto", "Estado"]} />
         <TBody>
           {stages.map((stage) => {
             const stagePayments = payments.filter((p) => p.stage_id === stage.id);
+            const overdue = stage.status !== "paid" && stage.status !== "pending" && stage.due_date != null && stage.due_date < today;
             return (
               <Tr key={stage.id} className="hover:bg-transparent">
                 <Td className="align-top text-slate-500">{stage.position}</Td>
@@ -66,7 +71,12 @@ export function PaymentsCard({
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="text-sm">
                               <span className="font-medium">{formatCOP(payment.amount)}</span> · {PAYMENT_METHOD[payment.method]}
-                              {payment.provider_ref && <span className="text-slate-500"> · ref. {payment.provider_ref}</span>}
+                              {payment.provider_ref && (
+                                <span className="text-slate-500">
+                                  {" "}
+                                  · {payment.method === "wompi" ? "transacción" : "ref."} {payment.provider_ref}
+                                </span>
+                              )}
                               <span className="block text-xs text-slate-500">
                                 Enviado el {formatDateTime(payment.created_at)}
                                 {payment.verified_at && ` · revisado el ${formatDateTime(payment.verified_at)}`}
@@ -79,7 +89,9 @@ export function PaymentsCard({
                             {payment.proof_path ? (
                               <FilePreview url={payment.url} path={payment.proof_path} />
                             ) : (
-                              <p className="text-xs text-slate-500">Sin comprobante adjunto.</p>
+                              <p className="text-xs text-slate-500">
+                                {payment.method === "wompi" ? "Aprobado por Wompi; no requiere comprobante." : "Sin comprobante adjunto."}
+                              </p>
                             )}
                           </div>
                           {payment.status === "submitted" && (
@@ -91,7 +103,7 @@ export function PaymentsCard({
                                 pendingLabel="Verificando…"
                                 confirm={{
                                   title: "Verificar el pago",
-                                  description: `Confirmas que el pago de ${formatCOP(payment.amount)} aparece en el banco. Si cubre el total, el servicio pasa a Programado y se fija la fecha de inicio.`,
+                                  description: `Confirmas que el pago de ${formatCOP(payment.amount)} aparece en el banco. Se aplica en orden al plan de pagos; si completa el anticipo, el servicio pasa a Programado y se fija la fecha de inicio.`,
                                   confirmLabel: "Verificar pago",
                                 }}
                               >
@@ -123,14 +135,27 @@ export function PaymentsCard({
                     </ul>
                   )}
                 </Td>
+                <Td className="align-top whitespace-nowrap text-sm">
+                  {stage.status === "pending" && stage.opens_on ? (
+                    <span className="text-slate-500">Se habilita el {formatDate(stage.opens_on)}</span>
+                  ) : stage.due_date ? (
+                    <span className={overdue ? "font-medium text-red-700" : undefined}>Vence el {formatDate(stage.due_date)}</span>
+                  ) : (
+                    <span className="text-slate-500">{stage.kind === "installment" ? "Durante la obra" : "—"}</span>
+                  )}
+                </Td>
                 <Td className="align-top whitespace-nowrap">{formatCOP(stage.amount)}</Td>
                 <Td className="align-top">
-                  <Badge tone={STAGE_STATUS[stage.status].tone}>{STAGE_STATUS[stage.status].label}</Badge>
+                  {overdue ? (
+                    <Badge tone="red">Vencido</Badge>
+                  ) : (
+                    <Badge tone={STAGE_STATUS[stage.status].tone}>{STAGE_STATUS[stage.status].label}</Badge>
+                  )}
                 </Td>
               </Tr>
             );
           })}
-          {stages.length === 0 && <EmptyRow colSpan={4}>Sin cobros.</EmptyRow>}
+          {stages.length === 0 && <EmptyRow colSpan={5}>Sin pagos en el plan.</EmptyRow>}
         </TBody>
       </Table>
     </Card>

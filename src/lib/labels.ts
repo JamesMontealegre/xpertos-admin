@@ -220,7 +220,26 @@ export const PAYMENT_METHOD: Record<PaymentMethod, string> = {
   cash: "Efectivo",
   mercado_pago: "Mercado Pago",
   tucompra: "TuCompra",
+  wompi: "En línea (Wompi)",
 };
+
+/** Frecuencia de las cuotas, en plural: "Anticipo y 6 cuotas semanales". */
+export const INSTALLMENT_FREQUENCY: Record<Enums["installment_frequency"], string> = {
+  weekly: "semanales",
+  biweekly: "quincenales",
+  monthly: "mensuales",
+};
+
+/** "Pago único", "Pago único en 2 pagos" o "Anticipo y 6 cuotas semanales". */
+export function paymentPlanLabel(
+  stages: { kind: string }[],
+  frequency: Enums["installment_frequency"] | null,
+): string | null {
+  if (stages.length === 0) return null;
+  const installments = stages.filter((s) => s.kind === "installment").length;
+  if (installments === 0) return stages.length > 1 ? `Pago único en ${stages.length} pagos` : "Pago único";
+  return `Anticipo y ${installments} ${installments === 1 ? "cuota" : "cuotas"}${frequency ? ` ${INSTALLMENT_FREQUENCY[frequency]}` : ""}`;
+}
 
 export const WEEKDAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
