@@ -2,14 +2,13 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button, LinkButton } from "@/components/ui/button";
+import { PdfDownloadButton, SignatureSvg } from "@/components/pdf-download-button";
 import { Card, CardBody, CardHeader, DescriptionList } from "@/components/ui/card";
 import { ActionDialog } from "@/components/ui/dialog";
 import { Field, Textarea } from "@/components/ui/input";
 import type { Database } from "@/lib/database.types";
 import { formatDateTime } from "@/lib/format";
-import { CONTRACT_STATUS, ROLE_LABEL, type ServiceStatus, type UserRole } from "@/lib/labels";
-import { STARTED_STATUSES } from "@/lib/service-phase";
+import { CONTRACT_STATUS, ROLE_LABEL, type UserRole } from "@/lib/labels";
 import { regenerateContract } from "../actions";
 
 export type ContractWithSignatures = Database["public"]["Tables"]["contracts"]["Row"] & {
@@ -20,25 +19,22 @@ export type ContractWithSignatures = Database["public"]["Tables"]["contracts"]["
     ip: string | null;
     body_hash: string;
     method: string;
+    signature_svg: string | null;
+    signature_width: number | null;
+    signature_height: number | null;
+    document_type: string | null;
+    document_number: string | null;
     signer: { full_name: string } | null;
   }>;
 };
 
 /**
  * Contrato del servicio entre Xpertos y el cliente (el experto no es parte ni lo firma). Se genera al pasar a
- * Pendiente de pago y se regenera al confirmar el pago (pasa a ser el contrato de inicio, descargable).
+ * Pendiente de pago; el cliente lo firma a mano alzada. El PDF lleva la firma de Xpertos y la del cliente.
  */
-export function ContractCard({
-  serviceId,
-  status,
-  contract,
-}: {
-  serviceId: string;
-  status: ServiceStatus;
-  contract: ContractWithSignatures | null;
-}) {
-  const startContract = STARTED_STATUSES.includes(status) || (status === "cancelled" && Boolean(contract?.body_md.includes("acta de inicio")));
-  const downloadable = Boolean(contract) && startContract && contract?.status !== "void";
+export function ContractCard({ serviceId, contract }: { serviceId: string; contract: ContractWithSignatures | null }) {
+  // Contratos anteriores al acta de inicio separada: al programar se regeneraban como "contrato y acta de inicio".
+  const startContract = Boolean(contract?.body_md.includes("acta de inicio"));
 
   return (
     <Card>
@@ -52,27 +48,14 @@ export function ContractCard({
         action={
           <>
             {contract && <Badge tone={CONTRACT_STATUS[contract.status].tone}>{CONTRACT_STATUS[contract.status].label}</Badge>}
-            {contract &&
-              (downloadable ? (
-                <LinkButton href={`/servicios/${serviceId}/contrato`} variant="primary" size="sm">
-                  Descargar contrato
-                </LinkButton>
-              ) : (
-                <Button size="sm" variant="secondary" disabled title="El contrato de inicio se habilita al confirmar el pago">
-                  Descargar contrato
-                </Button>
-              ))}
+            {contract && contract.status !== "void" && (
+              <PdfDownloadButton body={{ contract_id: contract.id }} label="Descargar PDF" />
+            )}
           </>
         }
       />
       {contract && (
         <CardBody className="space-y-4">
-          {!startContract && status !== "cancelled" && (
-            <Alert tone="info">
-              Este es el contrato de prestación de servicios. El contrato de inicio (con el acta de inicio y las fechas) se
-              habilita para descarga al confirmar el pago del cliente.
-            </Alert>
-          )}
           <DescriptionList
             items={[
               { label: "Hash SHA-256", value: <span className="break-all font-mono text-xs">{contract.body_hash}</span> },
@@ -82,7 +65,7 @@ export function ContractCard({
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Firmas</p>
             <p className="mt-1 text-sm text-slate-500">
-              Contrato entre Xpertos y el cliente: Xpertos lo emite y acepta al generarlo; queda firmado cuando el cliente lo acepta en la app o desde el enlace que le llega al correo (con código de verificación).
+              Contrato entre Xpertos y el cliente: Xpertos lo emite y firma al generarlo; queda firmado cuando el cliente lo firma a mano alzada en la app o desde el enlace que le llega al correo (con código de verificación).
             </p>
             {contract.signatures.length === 0 ? (
               <p className="mt-1 text-sm text-slate-500">El cliente aún no ha firmado esta versión.</p>
@@ -93,11 +76,18 @@ export function ContractCard({
                     <span>
                       <span className="font-medium">{ROLE_LABEL[sig.signer_role]}</span>
                       {sig.signer?.full_name ? ` · ${sig.signer.full_name}` : ""}
+                      {sig.document_number ? ` · ${sig.document_type} ${sig.document_number}` : ""}
                     </span>
                     <span className="text-xs text-slate-500">
-                      {formatDateTime(sig.signed_at)} · {sig.method === "email" ? "por correo con código" : "en la app"} · IP {sig.ip ?? "—"}
+                      {formatDateTime(sig.signed_at)} · {sig.signature_svg ? "a mano alzada " : ""}
+                      {sig.method === "email" ? "desde el correo con código" : "en la app"} · IP {sig.ip ?? "—"}
                       {sig.body_hash !== contract.body_hash && " · versión anterior"}
                     </span>
+                    {sig.signature_svg && sig.signature_width && sig.signature_height && (
+                      <span className="basis-full">
+                        <SignatureSvg path={sig.signature_svg} width={sig.signature_width} height={sig.signature_height} />
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>

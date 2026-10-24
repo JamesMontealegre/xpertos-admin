@@ -164,12 +164,18 @@ export type Database = {
           accepted_terms: boolean
           body_hash: string
           contract_id: string
+          document_number: string | null
+          document_type: string | null
           id: string
           ip: string | null
           method: string
+          signature_height: number | null
           signature_image_path: string | null
+          signature_svg: string | null
+          signature_width: number | null
           signed_at: string
           signer_id: string
+          signer_name: string | null
           signer_role: Database["public"]["Enums"]["user_role"]
           user_agent: string | null
         }
@@ -178,12 +184,18 @@ export type Database = {
           accepted_terms?: boolean
           body_hash: string
           contract_id: string
+          document_number?: string | null
+          document_type?: string | null
           id?: string
           ip?: string | null
           method?: string
+          signature_height?: number | null
           signature_image_path?: string | null
+          signature_svg?: string | null
+          signature_width?: number | null
           signed_at?: string
           signer_id: string
+          signer_name?: string | null
           signer_role: Database["public"]["Enums"]["user_role"]
           user_agent?: string | null
         }
@@ -191,12 +203,18 @@ export type Database = {
           accepted_terms?: boolean
           body_hash?: string
           contract_id?: string
+          document_number?: string | null
+          document_type?: string | null
           id?: string
           ip?: string | null
           method?: string
+          signature_height?: number | null
           signature_image_path?: string | null
+          signature_svg?: string | null
+          signature_width?: number | null
           signed_at?: string
           signer_id?: string
+          signer_name?: string | null
           signer_role?: Database["public"]["Enums"]["user_role"]
           user_agent?: string | null
         }
@@ -225,6 +243,7 @@ export type Database = {
           created_by: string | null
           id: string
           service_id: string
+          statement: string | null
           status: Database["public"]["Enums"]["contract_status"]
           updated_at: string
           version: number
@@ -237,6 +256,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           service_id: string
+          statement?: string | null
           status?: Database["public"]["Enums"]["contract_status"]
           updated_at?: string
           version?: number
@@ -248,6 +268,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           service_id?: string
+          statement?: string | null
           status?: Database["public"]["Enums"]["contract_status"]
           updated_at?: string
           version?: number
@@ -941,6 +962,36 @@ export type Database = {
             foreignKeyName: "payments_verified_by_fkey"
             columns: ["verified_by"]
             isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_identity: {
+        Row: {
+          document_number: string
+          document_type: string
+          updated_at: string
+          user_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          document_number: string
+          document_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          document_number?: string
+          document_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_identity_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1651,6 +1702,128 @@ export type Database = {
           },
         ]
       }
+      start_act_signatures: {
+        Row: {
+          act_id: string
+          body_hash: string
+          document_number: string | null
+          document_type: string | null
+          id: string
+          ip: string | null
+          signature_height: number
+          signature_svg: string
+          signature_width: number
+          signed_at: string
+          signer_id: string
+          signer_name: string | null
+          signer_role: Database["public"]["Enums"]["user_role"]
+          user_agent: string | null
+        }
+        ComputedFields: never
+        Insert: {
+          act_id: string
+          body_hash: string
+          document_number?: string | null
+          document_type?: string | null
+          id?: string
+          ip?: string | null
+          signature_height: number
+          signature_svg: string
+          signature_width: number
+          signed_at?: string
+          signer_id: string
+          signer_name?: string | null
+          signer_role: Database["public"]["Enums"]["user_role"]
+          user_agent?: string | null
+        }
+        Update: {
+          act_id?: string
+          body_hash?: string
+          document_number?: string | null
+          document_type?: string | null
+          id?: string
+          ip?: string | null
+          signature_height?: number
+          signature_svg?: string
+          signature_width?: number
+          signed_at?: string
+          signer_id?: string
+          signer_name?: string | null
+          signer_role?: Database["public"]["Enums"]["user_role"]
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "start_act_signatures_act_id_fkey"
+            columns: ["act_id"]
+            isOneToOne: false
+            referencedRelation: "start_acts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "start_act_signatures_signer_id_fkey"
+            columns: ["signer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      start_acts: {
+        Row: {
+          body_hash: string
+          body_md: string
+          created_at: string
+          id: string
+          service_id: string
+          signed_at: string | null
+          statement: string | null
+          status: string
+          updated_at: string
+          version: number
+        }
+        ComputedFields: never
+        Insert: {
+          body_hash: string
+          body_md: string
+          created_at?: string
+          id?: string
+          service_id: string
+          signed_at?: string | null
+          statement?: string | null
+          status?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          body_hash?: string
+          body_md?: string
+          created_at?: string
+          id?: string
+          service_id?: string
+          signed_at?: string | null
+          statement?: string | null
+          status?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "start_acts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: true
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "start_acts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: true
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       work_log_photos: {
         Row: {
           created_at: string
@@ -1740,6 +1913,52 @@ export type Database = {
           },
         ]
       }
+      xpertos_party: {
+        Row: {
+          address: string | null
+          city: string | null
+          document_number: string | null
+          document_type: string | null
+          email: string | null
+          id: boolean
+          legal_name: string | null
+          phone: string | null
+          signature_path: string | null
+          signer_name: string | null
+          trade_name: string
+          updated_at: string
+        }
+        ComputedFields: never
+        Insert: {
+          address?: string | null
+          city?: string | null
+          document_number?: string | null
+          document_type?: string | null
+          email?: string | null
+          id?: boolean
+          legal_name?: string | null
+          phone?: string | null
+          signature_path?: string | null
+          signer_name?: string | null
+          trade_name?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          document_number?: string | null
+          document_type?: string | null
+          email?: string | null
+          id?: boolean
+          legal_name?: string | null
+          phone?: string | null
+          signature_path?: string | null
+          signer_name?: string | null
+          trade_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       service_schedule: {
@@ -1809,6 +2028,7 @@ export type Database = {
           created_by: string | null
           id: string
           service_id: string
+          statement: string | null
           status: Database["public"]["Enums"]["contract_status"]
           updated_at: string
           version: number
@@ -1843,6 +2063,32 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      _build_start_act: {
+        Args: { p_service_id: string }
+        Returns: {
+          body_hash: string
+          body_md: string
+          created_at: string
+          id: string
+          service_id: string
+          signed_at: string | null
+          statement: string | null
+          status: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "start_acts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      _check_signature: {
+        Args: { p_height: number; p_svg: string; p_width: number }
+        Returns: undefined
+      }
+      _contract_statement: { Args: { p_service_id: string }; Returns: string }
       _create_payment_stages: {
         Args: { p_service_id: string }
         Returns: undefined
@@ -1888,6 +2134,7 @@ export type Database = {
         Args: { p_contract_id: string }
         Returns: undefined
       }
+      _join_es: { Args: { p_items: string[] }; Returns: string }
       _mask_email: { Args: { p: string }; Returns: string }
       _notification_text: {
         Args: { p_audience: string; p_data: Json; p_template: string }
@@ -1900,6 +2147,10 @@ export type Database = {
       _payment_accounts_json: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      _refresh_pending_contracts: {
+        Args: { p_client: string }
+        Returns: undefined
       }
       _request_ip: { Args: Record<PropertyKey, never>; Returns: string }
       _schedule_installments: {
@@ -1936,6 +2187,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      _upsert_identity: {
+        Args: { p_number: string; p_type: string; p_user: string }
+        Returns: undefined
       }
       accept_service_order: {
         Args: { p_body_hash: string; p_order_id: string; p_user_agent?: string }
@@ -2298,10 +2553,25 @@ export type Database = {
         Returns: undefined
       }
       contract_sign_confirm: {
-        Args: { p_code: string; p_token: string; p_user_agent?: string }
+        Args: {
+          p_code: string
+          p_signature_height: number
+          p_signature_svg: string
+          p_signature_width: number
+          p_token: string
+          p_user_agent?: string
+        }
         Returns: Json
       }
       contract_sign_send_code: { Args: { p_token: string }; Returns: Json }
+      contract_sign_set_identity: {
+        Args: {
+          p_document_number: string
+          p_document_type: string
+          p_token: string
+        }
+        Returns: Json
+      }
       contract_sign_view: { Args: { p_token: string }; Returns: Json }
       create_admin_user: {
         Args: {
@@ -2325,6 +2595,7 @@ export type Database = {
         Args: { p: Database["public"]["Enums"]["document_kind"] }
         Returns: string
       }
+      document_type_label: { Args: { p_type: string }; Returns: string }
       expert_can_choose_frequency: {
         Args: { p_expert_id: string }
         Returns: boolean
@@ -2349,6 +2620,7 @@ export type Database = {
           created_by: string | null
           id: string
           service_id: string
+          statement: string | null
           status: Database["public"]["Enums"]["contract_status"]
           updated_at: string
           version: number
@@ -2491,6 +2763,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      set_my_identity: {
+        Args: { p_document_number: string; p_document_type: string }
+        Returns: undefined
+      }
       set_payout_frequency: {
         Args: {
           p_frequency: Database["public"]["Enums"]["payout_frequency"]
@@ -2545,26 +2821,65 @@ export type Database = {
         Args: {
           p_body_hash: string
           p_contract_id: string
-          p_ip?: string
-          p_signature_image_path?: string
+          p_signature_height: number
+          p_signature_svg: string
+          p_signature_width: number
           p_user_agent?: string
         }
         Returns: {
           accepted_terms: boolean
           body_hash: string
           contract_id: string
+          document_number: string | null
+          document_type: string | null
           id: string
           ip: string | null
           method: string
+          signature_height: number | null
           signature_image_path: string | null
+          signature_svg: string | null
+          signature_width: number | null
           signed_at: string
           signer_id: string
+          signer_name: string | null
           signer_role: Database["public"]["Enums"]["user_role"]
           user_agent: string | null
         }
         SetofOptions: {
           from: "*"
           to: "contract_signatures"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      sign_start_act: {
+        Args: {
+          p_act_id: string
+          p_body_hash: string
+          p_signature_height: number
+          p_signature_svg: string
+          p_signature_width: number
+          p_user_agent?: string
+        }
+        Returns: {
+          act_id: string
+          body_hash: string
+          document_number: string | null
+          document_type: string | null
+          id: string
+          ip: string | null
+          signature_height: number
+          signature_svg: string
+          signature_width: number
+          signed_at: string
+          signer_id: string
+          signer_name: string | null
+          signer_role: Database["public"]["Enums"]["user_role"]
+          user_agent: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "start_act_signatures"
           isOneToOne: true
           isSetofReturn: false
         }

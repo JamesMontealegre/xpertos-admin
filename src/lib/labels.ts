@@ -254,6 +254,8 @@ export const EVENT_TYPE: Record<string, string> = {
   contract_signed: "Contrato firmado",
   service_order_created: "Orden de servicio generada",
   service_order_accepted: "Orden de servicio aceptada por el experto",
+  start_act_created: "Acta de inicio generada",
+  start_act_signed: "Acta de inicio firmada por el cliente y el experto",
   review_created: "Reseña publicada",
   quote_submitted: "Cotización enviada",
   quote_presented: "Cotización presentada al cliente",

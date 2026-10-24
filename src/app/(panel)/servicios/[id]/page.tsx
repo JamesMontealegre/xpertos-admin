@@ -44,6 +44,7 @@ import { PayoutsCard } from "./payouts-card";
 import { QuoteCard, expertNetEstimate, type QuoteWithLines } from "./quote-card";
 import { ScheduleCard } from "./schedule-card";
 import { SERVICE_ORDER_STATUS, ServiceOrderCard } from "./service-order-card";
+import { START_ACT_STATUS, StartActCard, type StartActWithSignatures } from "./start-act-card";
 import { Timeline, type TimelineEvent } from "./timeline";
 import { NextSteps, Step } from "./next-steps";
 import { WorkLogsCard, type WorkLogView } from "./work-logs-card";
@@ -52,7 +53,7 @@ import { cancelService, moveService, pauseService, resumeService } from "../acti
 export const metadata: Metadata = { title: "Detalle de servicio" };
 
 type Slot = { date?: string; from?: string; to?: string };
-type SectionKey = "review" | "assign" | "quote" | "payments" | "schedule" | "work" | "payout" | "contract" | "order" | "details" | "photos" | "reviews";
+type SectionKey = "review" | "assign" | "quote" | "payments" | "schedule" | "work" | "payout" | "contract" | "act" | "order" | "details" | "photos" | "reviews";
 
 /**
  * Orden de las tarjetas según lo que más le sirve al equipo en cada estado: primero la acción que toca
@@ -64,14 +65,14 @@ const ORDER: Record<ServiceStatus, SectionKey[]> = {
   assigned: ["assign", "quote", "details", "photos"],
   quoting: ["quote", "details", "photos"],
   pending_payment: ["payments", "contract", "order", "quote", "details", "photos"],
-  scheduled: ["schedule", "quote", "order", "contract", "payments", "payout", "details", "photos"],
-  in_progress: ["work", "schedule", "payout", "order", "quote", "contract", "payments", "details", "photos"],
-  paused: ["work", "schedule", "payout", "order", "quote", "contract", "payments", "details", "photos"],
-  under_review: ["review", "work", "quote", "order", "contract", "payments", "schedule", "payout", "details", "photos"],
-  completed: ["payout", "reviews", "work", "quote", "order", "contract", "payments", "schedule", "details", "photos"],
-  cancelled: ["details", "quote", "payments", "contract", "order", "schedule", "work", "payout", "photos", "reviews"],
+  scheduled: ["schedule", "act", "quote", "order", "contract", "payments", "payout", "details", "photos"],
+  in_progress: ["work", "act", "schedule", "payout", "order", "quote", "contract", "payments", "details", "photos"],
+  paused: ["work", "act", "schedule", "payout", "order", "quote", "contract", "payments", "details", "photos"],
+  under_review: ["review", "work", "quote", "order", "contract", "act", "payments", "schedule", "payout", "details", "photos"],
+  completed: ["payout", "reviews", "work", "quote", "order", "contract", "act", "payments", "schedule", "details", "photos"],
+  cancelled: ["details", "quote", "payments", "contract", "act", "order", "schedule", "work", "payout", "photos", "reviews"],
 };
-const BASE_ORDER: SectionKey[] = ["review", "assign", "work", "schedule", "payout", "quote", "payments", "contract", "order", "details", "photos", "reviews"];
+const BASE_ORDER: SectionKey[] = ["review", "assign", "work", "schedule", "payout", "quote", "payments", "contract", "act", "order", "details", "photos", "reviews"];
 
 /** Ancla de cada tarjeta (los botones de "Qué sigue" llevan hasta ella). */
 const ANCHOR: Record<SectionKey, string> = {
@@ -83,6 +84,7 @@ const ANCHOR: Record<SectionKey, string> = {
   work: "jornadas",
   payout: "pago-experto",
   contract: "contrato",
+  act: "acta",
   order: "orden",
   details: "datos",
   photos: "fotos",
@@ -131,6 +133,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     { data: categoryRows },
     { data: holidays },
     { data: serviceOrder },
+    { data: startActRow },
   ] = await Promise.all([
     service.expert_id
       ? supabase
@@ -146,7 +149,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     supabase
       .from("contracts")
       .select(
-        "*, signatures:contract_signatures(id, signer_role, signed_at, ip, body_hash, method, signer:profiles!contract_signatures_signer_id_fkey(full_name))",
+        "*, signatures:contract_signatures(id, signer_role, signed_at, ip, body_hash, method, signature_svg, signature_width, signature_height, document_type, document_number, signer:profiles!contract_signatures_signer_id_fkey(full_name))",
       )
       .eq("service_id", id)
       .maybeSingle(),
@@ -187,7 +190,9 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
       ? supabase.from("holidays").select("day").gte("day", service.start_date).lte("day", today)
       : Promise.resolve({ data: null }),
     supabase.from("service_orders").select("*").eq("service_id", id).maybeSingle(),
+    supabase.from("start_acts").select("*, signatures:start_act_signatures(*)").eq("service_id", id).maybeSingle(),
   ]);
+  const startAct = (startActRow ?? null) as StartActWithSignatures | null;
 
   // Servicios activos de cada candidato del pool.
   const candidateIds = (candidates ?? []).map((c) => c.user_id);
@@ -478,8 +483,12 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
   if (contract || (service.expert_id && status !== "cancelled")) {
     sections.push({
       key: "contract",
-      node: <ContractCard serviceId={service.id} status={status} contract={(contract ?? null) as ContractWithSignatures | null} />,
+      node: <ContractCard serviceId={service.id} contract={(contract ?? null) as ContractWithSignatures | null} />,
     });
+  }
+
+  if (startAct) {
+    sections.push({ key: "act", node: <StartActCard act={startAct} startDate={service.start_date} /> });
   }
 
   if (serviceOrder) {
@@ -629,7 +638,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     ) : null;
   const typedContract = (contract ?? null) as ContractWithSignatures | null;
   const contractSigned = typedContract?.status === "signed";
-  const startAct = Boolean(typedContract?.body_md.includes("acta de inicio"));
+  const contractWithStartAct = Boolean(typedContract?.body_md.includes("acta de inicio"));
   const payoutCount = (payouts ?? []).length;
   const expertName = expertProfile?.profile?.full_name || "el experto";
   const expertPhone = expertProfile?.profile?.phone;
@@ -641,6 +650,24 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
       title={orderPending ? "Orden de servicio pendiente de aceptación del experto" : "El experto aceptó la orden de servicio"}
       detail={orderPending ? "Sin aceptarla no puede registrar jornadas." : undefined}
       action={{ label: "Ver orden", href: `#${ANCHOR.order}` }}
+    />
+  );
+
+  // Acta de inicio: la firman el cliente y el experto el día de inicio, antes de la primera jornada.
+  const actSigned = (role: "client" | "expert") =>
+    Boolean(startAct?.signatures.some((sig) => sig.signer_role === role && sig.body_hash === startAct.body_hash));
+  const actMissing = [!actSigned("client") && "el cliente", !actSigned("expert") && "el experto"].filter(Boolean).join(" y ");
+  const actDue = Boolean(service.start_date && today >= service.start_date);
+  const actStep = startAct && startAct.status === "pending_signatures" && (
+    <Step
+      state={actDue ? "alert" : "waiting"}
+      title={actDue ? `Acta de inicio sin firmar: falta ${actMissing}` : "Acta de inicio: se firma el día de inicio"}
+      detail={
+        actDue
+          ? "La firman a mano alzada en la app, cada uno en su celular. Sin ella el experto no puede registrar jornadas."
+          : `El ${formatDate(service.start_date)}, en el lugar y antes de la primera jornada.`
+      }
+      action={{ label: "Ver acta", href: `#${ANCHOR.act}` }}
     />
   );
 
@@ -719,8 +746,9 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
             )}
             <Step state="waiting" title={hint ?? "Programado"} detail="El servicio inicia solo en la fecha acordada." action={{ label: "Ver fechas", href: `#${ANCHOR.schedule}` }} />
             {installmentStep}
+            {actStep}
             {typedContract && !contractSigned && (
-              <Step state="waiting" title={startAct ? "Firma del acta de inicio pendiente" : "Firma del contrato pendiente"} action={{ label: "Ver contrato", href: `#${ANCHOR.contract}` }} />
+              <Step state="waiting" title={contractWithStartAct ? "Firma del acta de inicio pendiente" : "Firma del contrato pendiente"} action={{ label: "Ver contrato", href: `#${ANCHOR.contract}` }} />
             )}
             {orderStep}
           </>
@@ -730,6 +758,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
         return (
           <>
             {orderPending && orderStep}
+            {actStep}
             {installmentStep}
             <Step
               state={missingDays.length > 0 ? "alert" : "done"}
@@ -783,6 +812,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
     { label: "Plan de pagos", value: planLabel },
     { label: "Contrato", value: typedContract ? CONTRACT_STATUS[typedContract.status].label : null },
     { label: "Orden de servicio", value: serviceOrder ? SERVICE_ORDER_STATUS[serviceOrder.status]?.label ?? serviceOrder.status : null },
+    { label: "Acta de inicio", value: startAct ? START_ACT_STATUS[startAct.status]?.label ?? startAct.status : null },
     { label: "Visita acordada", value: service.scheduled_at && assigning ? formatDateTime(service.scheduled_at) : null },
     { label: "Inicio de obra", value: schedule?.start_date ? formatDate(schedule.start_date) : null },
     { label: "Fin estimado", value: schedule?.estimated_end_date ? formatDate(schedule.estimated_end_date) : null },
