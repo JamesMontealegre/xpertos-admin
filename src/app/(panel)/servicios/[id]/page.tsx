@@ -41,7 +41,7 @@ import { ContractCard, type ContractWithSignatures } from "./contract-card";
 import { MoveControls } from "./move-controls";
 import { PaymentsCard } from "./payments-card";
 import { PayoutsCard } from "./payouts-card";
-import { QuoteCard, expertNetEstimate, type QuoteWithLines } from "./quote-card";
+import { QuoteCard, expertNetEstimate, type AiRunView, type QuoteWithLines } from "./quote-card";
 import { ScheduleCard } from "./schedule-card";
 import { SERVICE_ORDER_STATUS, ServiceOrderCard } from "./service-order-card";
 import { START_ACT_STATUS, StartActCard, type StartActWithSignatures } from "./start-act-card";
@@ -205,10 +205,17 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
   }, {});
 
   const logs = workLogs ?? [];
+  // Lecturas de fotos con IA que hizo el experto para armar la cotización.
+  const { data: aiRunRows } = await supabase
+    .from("quote_ai_runs")
+    .select("id, created_at, kind, cost_usd, error, photo_paths")
+    .eq("service_id", id)
+    .order("created_at");
   const [photoUrls, proofUrls] = await Promise.all([
     signedUrlMap(supabase, "service-photos", [
       ...(photos ?? []).map((p) => p.storage_path),
       ...logs.flatMap((l) => l.photos.map((p) => p.storage_path)),
+      ...(aiRunRows ?? []).flatMap((r) => r.photo_paths),
     ]),
     signedUrlMap(supabase, "payment-proofs", (payments ?? []).map((p) => p.proof_path)),
   ]);
@@ -217,6 +224,14 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
   const beforePhotos = (photos ?? [])
     .filter((p) => p.kind === "before")
     .map((p) => ({ id: p.id, url: photoUrls.get(p.storage_path) ?? null, label: "Foto del antes" }));
+  const aiRuns: AiRunView[] = (aiRunRows ?? []).map((r) => ({
+    id: r.id,
+    createdAt: r.created_at,
+    kind: r.kind,
+    cost: r.cost_usd,
+    error: r.error,
+    photos: r.photo_paths.map((path, idx) => ({ id: `${r.id}-${idx}`, url: photoUrls.get(path) ?? null, label: "Foto leída por la IA" })),
+  }));
   const paymentRows = (payments ?? []).map((p) => ({ ...p, url: p.proof_path ? proofUrls.get(p.proof_path) ?? null : null }));
   const logViews: WorkLogView[] = logs.map((l) => ({
     id: l.id,
@@ -410,6 +425,7 @@ export default async function ServiceDetailPage(props: PageProps<"/servicios/[id
           status={status}
           quote={quoteWithLines}
           beforePhotos={beforePhotos}
+          aiRuns={aiRuns}
           commissionPct={commissionPct}
           clientFeePct={Number(service.client_fee_pct)}
         />

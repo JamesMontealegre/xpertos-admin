@@ -1037,10 +1037,79 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_ai_runs: {
+        Row: {
+          cost_usd: number | null
+          created_at: string
+          error: string | null
+          expert_id: string
+          id: string
+          input_tokens: number | null
+          kind: string | null
+          model: string | null
+          output_tokens: number | null
+          photo_paths: string[]
+          result: Json | null
+          service_id: string
+        }
+        ComputedFields: never
+        Insert: {
+          cost_usd?: number | null
+          created_at?: string
+          error?: string | null
+          expert_id: string
+          id?: string
+          input_tokens?: number | null
+          kind?: string | null
+          model?: string | null
+          output_tokens?: number | null
+          photo_paths: string[]
+          result?: Json | null
+          service_id: string
+        }
+        Update: {
+          cost_usd?: number | null
+          created_at?: string
+          error?: string | null
+          expert_id?: string
+          id?: string
+          input_tokens?: number | null
+          kind?: string | null
+          model?: string | null
+          output_tokens?: number | null
+          photo_paths?: string[]
+          result?: Json | null
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_ai_runs_expert_id_fkey"
+            columns: ["expert_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_ai_runs_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "service_schedule"
+            referencedColumns: ["service_id"]
+          },
+          {
+            foreignKeyName: "quote_ai_runs_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_items: {
         Row: {
           created_at: string
           description: string
+          from_ai: boolean
           id: string
           line_total: number | null
           measurement: string | null
@@ -1054,6 +1123,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
+          from_ai?: boolean
           id?: string
           line_total?: never
           measurement?: string | null
@@ -1066,6 +1136,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          from_ai?: boolean
           id?: string
           line_total?: never
           measurement?: string | null
@@ -1089,6 +1160,7 @@ export type Database = {
         Row: {
           created_at: string
           estimated_cost: number | null
+          from_ai: boolean
           id: string
           line_total: number | null
           name: string
@@ -1103,6 +1175,7 @@ export type Database = {
         Insert: {
           created_at?: string
           estimated_cost?: number | null
+          from_ai?: boolean
           id?: string
           line_total?: never
           name: string
@@ -1116,6 +1189,7 @@ export type Database = {
         Update: {
           created_at?: string
           estimated_cost?: number | null
+          from_ai?: boolean
           id?: string
           line_total?: never
           name?: string

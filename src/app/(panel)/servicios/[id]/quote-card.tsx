@@ -17,6 +17,15 @@ type MaterialRow = Database["public"]["Tables"]["quote_materials"]["Row"];
 
 export type QuoteWithLines = QuoteRow & { items: ItemRow[]; materials: MaterialRow[] };
 
+/** Lectura de fotos con IA que hizo el experto (fotos, tipo y costo). */
+export type AiRunView = { id: string; createdAt: string; kind: string | null; cost: number | null; error: string | null; photos: PhotoItem[] };
+const AI_KIND: Record<string, string> = {
+  written_quote: "Cotización escrita",
+  site_photo: "Fotos del lugar",
+  mixed: "Lista y fotos del lugar",
+  unreadable: "Fotos ilegibles",
+};
+
 const qty = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 });
 
 /**
@@ -37,6 +46,7 @@ export function QuoteCard({
   status,
   quote,
   beforePhotos,
+  aiRuns,
   commissionPct,
   clientFeePct,
 }: {
@@ -44,6 +54,7 @@ export function QuoteCard({
   status: ServiceStatus;
   quote: QuoteWithLines | null;
   beforePhotos: PhotoItem[];
+  aiRuns: AiRunView[];
   commissionPct: number;
   clientFeePct: number;
 }) {
@@ -134,7 +145,10 @@ export function QuoteCard({
                 {items.map((item, i) => (
                   <Tr key={item.id} className="hover:bg-transparent">
                     <Td className="text-slate-500">{i + 1}</Td>
-                    <Td>{item.description}</Td>
+                    <Td>
+                      {item.description}
+                      {item.from_ai && <Badge tone="blue" className="ml-2">IA</Badge>}
+                    </Td>
                     <Td className="text-slate-600">{item.measurement || "—"}</Td>
                     <Td className="whitespace-nowrap">
                       {qty.format(Number(item.quantity))} {item.unit}
@@ -176,6 +190,7 @@ export function QuoteCard({
                 <li key={m.id} className="flex flex-wrap items-baseline justify-between gap-2 px-4 py-2">
                   <span>
                     <span className="font-medium">{m.name}</span>
+                    {m.from_ai && <Badge tone="blue" className="ml-2">IA</Badge>}
                     <span className="text-slate-500">
                       {" "}
                       · {qty.format(Number(m.quantity))} {m.unit}
@@ -207,6 +222,23 @@ export function QuoteCard({
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Fotos del antes</p>
           <PhotoGrid photos={beforePhotos} empty="El experto no ha subido fotos del antes." />
         </div>
+
+        {aiRuns.length > 0 && (
+          <div className="space-y-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+              Armada con IA desde fotos · las líneas marcadas «IA» vienen de aquí
+            </p>
+            {aiRuns.map((run) => (
+              <div key={run.id} className="space-y-2">
+                <p className="text-sm text-slate-600">
+                  {formatDateTime(run.createdAt)} · {run.error ? "Falló" : AI_KIND[run.kind ?? ""] ?? "Lectura"}
+                  {run.cost != null && ` · US$ ${Number(run.cost).toFixed(3)}`}
+                </p>
+                <PhotoGrid photos={run.photos} empty="Sin fotos." />
+              </div>
+            ))}
+          </div>
+        )}
 
         {evaluating && (
           <div className="space-y-3 border-t border-border pt-5">
