@@ -702,6 +702,7 @@ export type Database = {
       online_payments: {
         Row: {
           amount: number
+          charged_amount: number | null
           client_id: string
           created_at: string
           id: string
@@ -718,6 +719,7 @@ export type Database = {
         ComputedFields: never
         Insert: {
           amount: number
+          charged_amount?: number | null
           client_id: string
           created_at?: string
           id?: string
@@ -733,6 +735,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          charged_amount?: number | null
           client_id?: string
           created_at?: string
           id?: string
@@ -825,7 +828,11 @@ export type Database = {
         Row: {
           advance_pct: number
           daily_limit: number
+          gateway_fee_fixed: number
+          gateway_fee_pct: number
+          gateway_vat_pct: number
           id: boolean
+          max_charge: number
           max_payment: number
           updated_at: string
         }
@@ -833,14 +840,22 @@ export type Database = {
         Insert: {
           advance_pct?: number
           daily_limit?: number
+          gateway_fee_fixed?: number
+          gateway_fee_pct?: number
+          gateway_vat_pct?: number
           id?: boolean
+          max_charge?: number
           max_payment?: number
           updated_at?: string
         }
         Update: {
           advance_pct?: number
           daily_limit?: number
+          gateway_fee_fixed?: number
+          gateway_fee_pct?: number
+          gateway_vat_pct?: number
           id?: boolean
+          max_charge?: number
           max_payment?: number
           updated_at?: string
         }
@@ -2367,6 +2382,7 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      online_charge: { Args: { p_amount: number }; Returns: number }
       open_next_stage: { Args: { p_service_id: string }; Returns: undefined }
       payment_plan_options: { Args: { p_service_id: string }; Returns: Json }
       payment_plan_schedule: {
