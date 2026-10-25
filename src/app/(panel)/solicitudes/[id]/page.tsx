@@ -25,7 +25,9 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
 
   const { data: application } = await supabase
     .from("expert_applications")
-    .select("*, reviewer:profiles!expert_applications_reviewed_by_fkey(full_name)")
+    .select(
+      "*, reviewer:profiles!expert_applications_reviewed_by_fkey(full_name), occupation:occupations(name), department:departments(name)",
+    )
     .eq("id", id)
     .maybeSingle();
   if (!application) notFound();
@@ -85,11 +87,15 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
                   { label: "Nombre", value: application.full_name },
                   { label: "Email", value: application.email },
                   { label: "Teléfono", value: application.phone ?? "—" },
-                  { label: "Ciudad", value: application.city ?? "—" },
+                  { label: "Ocupación", value: application.occupation?.name ?? "—" },
                   {
-                    label: "Experiencia",
-                    value: application.experience_years != null ? `${application.experience_years} años` : "—",
+                    label: "Municipio",
+                    value: [application.city, application.department?.name].filter(Boolean).join(", ") || "—",
                   },
+                  // Las postulaciones anteriores al formulario corto traían años de experiencia y reseña.
+                  ...(application.experience_years != null
+                    ? [{ label: "Experiencia", value: `${application.experience_years} años` }]
+                    : []),
                   {
                     label: "Medio de pago",
                     value: application.payout_method ? (
@@ -124,7 +130,7 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
                     ),
                   },
                   {
-                    label: "Categorías",
+                    label: "Categoría de servicio",
                     value: (
                       <span className="flex flex-wrap gap-1">
                         {application.category_ids.length === 0 && "—"}

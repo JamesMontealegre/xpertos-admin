@@ -297,6 +297,25 @@ export type Database = {
           },
         ]
       }
+      departments: {
+        Row: {
+          code: string
+          name: string
+          official_name: string
+        }
+        ComputedFields: never
+        Insert: {
+          code: string
+          name: string
+          official_name: string
+        }
+        Update: {
+          code?: string
+          name?: string
+          official_name?: string
+        }
+        Relationships: []
+      }
       email_outbox: {
         Row: {
           application_id: string | null
@@ -403,11 +422,14 @@ export type Database = {
           category_ids: string[]
           city: string | null
           created_at: string
+          department_code: string | null
           email: string
           experience_years: number | null
           expires_at: string
           full_name: string
           id: string
+          municipality_code: string | null
+          occupation_code: string | null
           payout_account: string | null
           payout_method: Database["public"]["Enums"]["payout_method"] | null
           phone: string | null
@@ -424,11 +446,14 @@ export type Database = {
           category_ids?: string[]
           city?: string | null
           created_at?: string
+          department_code?: string | null
           email: string
           experience_years?: number | null
           expires_at?: string
           full_name: string
           id?: string
+          municipality_code?: string | null
+          occupation_code?: string | null
           payout_account?: string | null
           payout_method?: Database["public"]["Enums"]["payout_method"] | null
           phone?: string | null
@@ -444,11 +469,14 @@ export type Database = {
           category_ids?: string[]
           city?: string | null
           created_at?: string
+          department_code?: string | null
           email?: string
           experience_years?: number | null
           expires_at?: string
           full_name?: string
           id?: string
+          municipality_code?: string | null
+          occupation_code?: string | null
           payout_account?: string | null
           payout_method?: Database["public"]["Enums"]["payout_method"] | null
           phone?: string | null
@@ -459,6 +487,27 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "expert_applications_department_code_fkey"
+            columns: ["department_code"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "expert_applications_municipality_code_fkey"
+            columns: ["municipality_code"]
+            isOneToOne: false
+            referencedRelation: "municipalities"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "expert_applications_occupation_code_fkey"
+            columns: ["occupation_code"]
+            isOneToOne: false
+            referencedRelation: "occupations"
+            referencedColumns: ["code"]
+          },
           {
             foreignKeyName: "expert_applications_reviewed_by_fkey"
             columns: ["reviewed_by"]
@@ -651,6 +700,39 @@ export type Database = {
         }
         Relationships: []
       }
+      municipalities: {
+        Row: {
+          code: string
+          department_code: string
+          kind: string | null
+          name: string
+          official_name: string
+        }
+        ComputedFields: never
+        Insert: {
+          code: string
+          department_code: string
+          kind?: string | null
+          name: string
+          official_name: string
+        }
+        Update: {
+          code?: string
+          department_code?: string
+          kind?: string | null
+          name?: string
+          official_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "municipalities_department_code_fkey"
+            columns: ["department_code"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           application_id: string | null
@@ -716,6 +798,39 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      occupations: {
+        Row: {
+          active: boolean
+          category_id: string
+          code: string
+          name: string
+          sort_order: number
+        }
+        ComputedFields: never
+        Insert: {
+          active?: boolean
+          category_id: string
+          code: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          active?: boolean
+          category_id?: string
+          code?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "occupations_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "service_categories"
             referencedColumns: ["id"]
           },
         ]
@@ -1002,10 +1117,12 @@ export type Database = {
           avatar_url: string | null
           city: string | null
           created_at: string
+          department_code: string | null
           email: string | null
           full_name: string
           id: string
           is_super_admin: boolean
+          municipality_code: string | null
           phone: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
@@ -1015,10 +1132,12 @@ export type Database = {
           avatar_url?: string | null
           city?: string | null
           created_at?: string
+          department_code?: string | null
           email?: string | null
           full_name?: string
           id: string
           is_super_admin?: boolean
+          municipality_code?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -1027,15 +1146,32 @@ export type Database = {
           avatar_url?: string | null
           city?: string | null
           created_at?: string
+          department_code?: string | null
           email?: string | null
           full_name?: string
           id?: string
           is_super_admin?: boolean
+          municipality_code?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_department_code_fkey"
+            columns: ["department_code"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["code"]
+          },
+          {
+            foreignKeyName: "profiles_municipality_code_fkey"
+            columns: ["municipality_code"]
+            isOneToOne: false
+            referencedRelation: "municipalities"
+            referencedColumns: ["code"]
+          },
+        ]
       }
       quote_ai_runs: {
         Row: {
@@ -2353,11 +2489,14 @@ export type Database = {
           category_ids: string[]
           city: string | null
           created_at: string
+          department_code: string | null
           email: string
           experience_years: number | null
           expires_at: string
           full_name: string
           id: string
+          municipality_code: string | null
+          occupation_code: string | null
           payout_account: string | null
           payout_method: Database["public"]["Enums"]["payout_method"] | null
           phone: string | null
@@ -2816,11 +2955,14 @@ export type Database = {
           category_ids: string[]
           city: string | null
           created_at: string
+          department_code: string | null
           email: string
           experience_years: number | null
           expires_at: string
           full_name: string
           id: string
+          municipality_code: string | null
+          occupation_code: string | null
           payout_account: string | null
           payout_method: Database["public"]["Enums"]["payout_method"] | null
           phone: string | null
@@ -2965,12 +3107,10 @@ export type Database = {
       }
       submit_landing_application: {
         Args: {
-          p_bio: string
-          p_category_ids: string[]
-          p_city: string
           p_email: string
-          p_experience_years: number
           p_full_name: string
+          p_municipality_code: string
+          p_occupation_code: string
           p_phone: string
           p_temp_password?: string
           p_user_id: string

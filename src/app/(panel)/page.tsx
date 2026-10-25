@@ -22,7 +22,7 @@ export default async function DashboardPage() {
       supabase.rpc("admin_dashboard"),
       supabase
         .from("expert_applications")
-        .select("id, full_name, city, status, created_at")
+        .select("id, full_name, city, status, created_at, occupation:occupations(name)")
         .order("created_at", { ascending: false })
         .limit(5),
       supabase
@@ -110,7 +110,7 @@ export default async function DashboardPage() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{a.full_name}</p>
                     <p className="text-xs text-slate-500">
-                      {a.city ?? "Sin ciudad"} · {formatDateTime(a.created_at)}
+                      {[a.occupation?.name, a.city ?? "Sin ciudad", formatDateTime(a.created_at)].filter(Boolean).join(" · ")}
                     </p>
                   </div>
                   <Badge tone={APPLICATION_STATUS[a.status].tone}>{APPLICATION_STATUS[a.status].label}</Badge>
