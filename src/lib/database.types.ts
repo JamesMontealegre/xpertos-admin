@@ -805,7 +805,7 @@ export type Database = {
       occupations: {
         Row: {
           active: boolean
-          category_id: string
+          category_id: string | null
           code: string
           name: string
           sort_order: number
@@ -813,14 +813,14 @@ export type Database = {
         ComputedFields: never
         Insert: {
           active?: boolean
-          category_id: string
+          category_id?: string | null
           code: string
           name: string
           sort_order?: number
         }
         Update: {
           active?: boolean
-          category_id?: string
+          category_id?: string | null
           code?: string
           name?: string
           sort_order?: number
