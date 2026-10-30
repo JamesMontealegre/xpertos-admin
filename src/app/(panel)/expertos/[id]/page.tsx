@@ -6,8 +6,10 @@ import { formatCOP, formatDate, formatDateTime, formatTime } from "@/lib/format"
 import { ACTIVE_SERVICE_STATUSES, SERVICE_STATUS, WEEKDAYS, payoutMethodLabel } from "@/lib/labels";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, DescriptionList } from "@/components/ui/card";
+import { ActionDialog } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyRow, Table, TBody, Td, THead, Tr } from "@/components/ui/table";
+import { updateExpertCategories } from "../actions";
 
 export const metadata: Metadata = { title: "Detalle de experto" };
 
@@ -23,7 +25,7 @@ export default async function ExpertDetailPage(props: PageProps<"/expertos/[id]"
   if (!expert) notFound();
 
   const [{ data: categories }, { data: availability }, { data: services }, { data: application }] = await Promise.all([
-    supabase.from("service_categories").select("id, name"),
+    supabase.from("service_categories").select("id, name, active").order("sort_order").order("name"),
     supabase.from("expert_availability").select("*").eq("expert_id", id).order("weekday").order("start_time"),
     supabase
       .from("services")
@@ -34,6 +36,8 @@ export default async function ExpertDetailPage(props: PageProps<"/expertos/[id]"
   ]);
 
   const categoryName = new Map((categories ?? []).map((c) => [c.id, c.name]));
+  // En el editor: las activas y las que el experto ya tiene aunque estén inactivas (para poder quitarlas).
+  const editableCategories = (categories ?? []).filter((c) => c.active || expert.category_ids.includes(c.id));
   const active = (services ?? []).filter((s) => ACTIVE_SERVICE_STATUSES.includes(s.status));
 
   return (
@@ -49,7 +53,42 @@ export default async function ExpertDetailPage(props: PageProps<"/expertos/[id]"
       <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
         <div className="space-y-6 lg:col-span-2">
           <Card>
-            <CardHeader title="Perfil" />
+            <CardHeader
+              title="Perfil"
+              action={
+                <ActionDialog
+                  triggerLabel="Editar categorías"
+                  title="Categorías del experto"
+                  description="Son las actividades con las que aparece al asignar un servicio. Marca todas las que hace."
+                  action={updateExpertCategories}
+                  fields={{ expert_id: id }}
+                  submitLabel="Guardar categorías"
+                  pendingLabel="Guardando…"
+                >
+                  <fieldset className="grid gap-2 sm:grid-cols-2">
+                    <legend className="sr-only">Categorías</legend>
+                    {editableCategories.map((c) => (
+                      <label
+                        key={c.id}
+                        className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm hover:bg-slate-50"
+                      >
+                        <input
+                          type="checkbox"
+                          name="category_ids"
+                          value={c.id}
+                          defaultChecked={expert.category_ids.includes(c.id)}
+                          className="size-4"
+                        />
+                        <span>
+                          {c.name}
+                          {!c.active && <span className="text-slate-400"> (inactiva)</span>}
+                        </span>
+                      </label>
+                    ))}
+                  </fieldset>
+                </ActionDialog>
+              }
+            />
             <CardBody className="space-y-5">
               <DescriptionList
                 items={[
