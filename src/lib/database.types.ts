@@ -430,6 +430,7 @@ export type Database = {
           id: string
           municipality_code: string | null
           occupation_code: string | null
+          occupation_codes: string[]
           payout_account: string | null
           payout_method: Database["public"]["Enums"]["payout_method"] | null
           phone: string | null
@@ -454,6 +455,7 @@ export type Database = {
           id?: string
           municipality_code?: string | null
           occupation_code?: string | null
+          occupation_codes?: string[]
           payout_account?: string | null
           payout_method?: Database["public"]["Enums"]["payout_method"] | null
           phone?: string | null
@@ -477,6 +479,7 @@ export type Database = {
           id?: string
           municipality_code?: string | null
           occupation_code?: string | null
+          occupation_codes?: string[]
           payout_account?: string | null
           payout_method?: Database["public"]["Enums"]["payout_method"] | null
           phone?: string | null
@@ -2497,6 +2500,7 @@ export type Database = {
           id: string
           municipality_code: string | null
           occupation_code: string | null
+          occupation_codes: string[]
           payout_account: string | null
           payout_method: Database["public"]["Enums"]["payout_method"] | null
           phone: string | null
@@ -2963,6 +2967,7 @@ export type Database = {
           id: string
           municipality_code: string | null
           occupation_code: string | null
+          occupation_codes: string[]
           payout_account: string | null
           payout_method: Database["public"]["Enums"]["payout_method"] | null
           phone: string | null
@@ -3106,15 +3111,25 @@ export type Database = {
         Returns: number
       }
       submit_landing_application: {
-        Args: {
-          p_email: string
-          p_full_name: string
-          p_municipality_code: string
-          p_occupation_code: string
-          p_phone: string
-          p_temp_password?: string
-          p_user_id: string
-        }
+        Args:
+          | {
+              p_email: string
+              p_full_name: string
+              p_municipality_code: string
+              p_occupation_code: string
+              p_phone: string
+              p_temp_password?: string
+              p_user_id: string
+            }
+          | {
+              p_email: string
+              p_full_name: string
+              p_municipality_code: string
+              p_occupation_codes: string[]
+              p_phone: string
+              p_temp_password?: string
+              p_user_id: string
+            }
         Returns: string
       }
       submit_quote: {

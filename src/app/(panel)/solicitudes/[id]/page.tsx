@@ -32,8 +32,11 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
     .maybeSingle();
   if (!application) notFound();
 
-  const [{ data: categories }, { data: documents }, { data: profile }] = await Promise.all([
+  const [{ data: categories }, { data: occupationRows }, { data: documents }, { data: profile }] = await Promise.all([
     supabase.from("service_categories").select("id, name"),
+    application.occupation_codes.length > 0
+      ? supabase.from("occupations").select("code, name").in("code", application.occupation_codes)
+      : Promise.resolve({ data: null }),
     supabase
       .from("application_documents")
       .select("*")
@@ -45,6 +48,10 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
   ]);
 
   const categoryName = new Map((categories ?? []).map((c) => [c.id, c.name]));
+  // Todas las ocupaciones en el orden en que el aspirante las eligió (las postulaciones anteriores tienen una).
+  const occupationName = new Map((occupationRows ?? []).map((o) => [o.code, o.name]));
+  const occupationLabel =
+    application.occupation_codes.map((code) => occupationName.get(code) ?? code).join(", ") || application.occupation?.name || "—";
   const docsWithUrls = await Promise.all(
     (documents ?? []).map(async (doc) => ({
       ...doc,
@@ -87,7 +94,7 @@ export default async function ApplicationDetailPage(props: PageProps<"/solicitud
                   { label: "Nombre", value: application.full_name },
                   { label: "Email", value: application.email },
                   { label: "Teléfono", value: application.phone ?? "—" },
-                  { label: "Ocupación", value: application.occupation?.name ?? "—" },
+                  { label: application.occupation_codes.length > 1 ? "Ocupaciones" : "Ocupación", value: occupationLabel },
                   {
                     label: "Municipio",
                     value: [application.city, application.department?.name].filter(Boolean).join(", ") || "—",
